@@ -1,0 +1,572 @@
+{
+  "info": {
+    "name": "Enterprise Architect API",
+    "description": "API collection for Enterprise Architect application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Objects",
+      "item": [
+        {
+          "name": "Get All Objects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/objects?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Object by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/objects/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "123e4567-e89b-12d3-a456-426614174000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Object",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objectName\": \"New Object\",\n  \"objectDescription\": \"Object description\",\n  \"objectTypeId\": 1,\n  \"exactObjectTypeId\": 1,\n  \"richTextDescription\": \"Rich text description\",\n  \"isLibrary\": false,\n  \"createdBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/objects",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects"]
+            }
+          }
+        },
+        {
+          "name": "Update Object",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objectName\": \"Updated Object Name\",\n  \"objectDescription\": \"Updated description\",\n  \"modifiedBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/objects/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "123e4567-e89b-12d3-a456-426614174000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Object",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/objects/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "123e4567-e89b-12d3-a456-426614174000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Libraries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/objects/libraries?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects", "libraries"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Objects by Type ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/objects/type/:typeId?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["objects", "type", ":typeId"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "typeId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Object Types",
+      "item": [
+        {
+          "name": "Get All Object Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/object-types?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-types"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Object Type by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/object-types/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-types", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Object Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objectTypeName\": \"New Type\",\n  \"description\": \"Type description\",\n  \"fileExtension\": \".vsdx\",\n  \"isTemplateType\": false,\n  \"activeType\": true,\n  \"createdBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/object-types",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-types"]
+            }
+          }
+        },
+        {
+          "name": "Update Object Type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objectTypeName\": \"Updated Type Name\",\n  \"description\": \"Updated description\",\n  \"modifiedBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/object-types/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-types", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Object Type",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/object-types/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-types", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profiles",
+      "item": [
+        {
+          "name": "Get All Profiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Profile by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileName\": \"New Profile\",\n  \"profileDescription\": \"Profile description\",\n  \"createdBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileName\": \"Updated Profile Name\",\n  \"profileDescription\": \"Updated description\",\n  \"modifiedBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profiles/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Profile",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["profiles", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Object Contents",
+      "item": [
+        {
+          "name": "Get All Object Contents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/object-contents?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-contents"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Object Content by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/object-contents/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-contents", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Object Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentObjectId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"containerVersionId\": \"123e4567-e89b-12d3-a456-426614174001\",\n  \"objectId\": \"123e4567-e89b-12d3-a456-426614174002\",\n  \"instances\": 1,\n  \"isShortCut\": false,\n  \"containmentType\": 1,\n  \"createdBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/object-contents",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-contents"]
+            }
+          }
+        },
+        {
+          "name": "Update Object Content",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instances\": 2,\n  \"isShortCut\": true,\n  \"modifiedBy\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/object-contents/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-contents", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Object Content",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/object-contents/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["object-contents", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Folders",
+      "item": [
+        {
+          "name": "Get Object Type Folders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/folders/object-type/:libraryId",
+              "host": ["{{baseUrl}}"],
+              "path": ["folders", "object-type", ":libraryId"],
+              "variable": [
+                {
+                  "key": "libraryId",
+                  "value": "123e4567-e89b-12d3-a456-426614174000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Folders by Library",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/folders/:folderId/contents?profileId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["folders", ":folderId", "contents"],
+              "query": [
+                {
+                  "key": "profileId",
+                  "value": "1"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "folderId",
+                  "value": "123e4567-e89b-12d3-a456-426614174000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["health"]
+        }
+      }
+    }
+  ]
+}
+

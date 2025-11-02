@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -112,3 +113,19 @@ func (h *ObjectContentHandler) DeleteObjectContent(w http.ResponseWriter, r *htt
 	})
 }
 
+func (h *ObjectContentHandler) GetDashboardStatistics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	libraryId, err := uuid.Parse(vars["libraryId"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid library ID", err.Error())
+		return
+	}
+
+	objectContents, err := h.service.DashboardCount(libraryId)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve object contents", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, objectContents)
+}

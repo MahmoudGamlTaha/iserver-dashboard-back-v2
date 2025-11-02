@@ -98,6 +98,9 @@ func main() {
 	api.HandleFunc("/folders/object-type/{libraryId}", folderHandler.GetObjectTypeFolders).Methods("GET")
 	api.HandleFunc("/folders/{folderId}/contents", folderHandler.GetFoldersByLibrary).Methods("GET")
 
+	// Dashboard routes
+	api.HandleFunc("/dashboard/object-counts/{libraryId}", objectContentHandler.GetDashboardStatistics).Methods("GET")
+
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

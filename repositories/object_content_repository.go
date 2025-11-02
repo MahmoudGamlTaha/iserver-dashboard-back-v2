@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ObjectContentRepository handles database operations for object contents
@@ -198,3 +200,37 @@ func (r *ObjectContentRepository) Delete(id int) error {
 	return nil
 }
 
+func (r *ObjectContentRepository) DashboardCount(libraryID uuid.UUID) ([]models.DashboardCount, error) {
+
+	sql := ` select o.ExactObjectTypeID,COUNT(ObjectID) [count], ot.ObjectTypeName, ot.color, ot.icon from Object o
+			inner join objecttype ot on ot.ObjectTypeID = o.ExactObjectTypeID
+			where o.LibraryId = @p1
+			and o.GeneralType <> dbo.const_GeneralType_Folder()
+
+			group by o.ExactObjectTypeID, ot.ObjectTypeName, ot.color, ot.icon`
+	fmt.Println("libraryID:", libraryID)
+	//sqlServerUUID := toSQLServerUUID(libraryID)
+	//sqlUUID, _ := uuid.FromBytes(sqlServerUUID)
+	//fmt.Println("UUID:", sqlUUID.String())
+
+	resultSet, err := r.db.Query(sql, &libraryID)
+
+	var dashboardCounts []models.DashboardCount
+
+	if err != nil {
+		return nil, err
+	}
+
+	for resultSet.Next() {
+		var dashboardCount models.DashboardCount
+		err := resultSet.Scan(&dashboardCount.ExactObjectTypeID, &dashboardCount.Count,
+			&dashboardCount.ObjectTypeName, &dashboardCount.Color, &dashboardCount.Icon)
+
+		if err != nil {
+			fmt.Errorf("error scanning folder: %w", err)
+			return nil, err
+		}
+		dashboardCounts = append(dashboardCounts, dashboardCount)
+	}
+	return dashboardCounts, nil
+}

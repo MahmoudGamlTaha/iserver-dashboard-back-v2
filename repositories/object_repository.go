@@ -475,10 +475,12 @@ func (r *ObjectRepository) GetHierarchyFolder(ObjectID uuid.UUID, profileID int,
 	`
 
 	// Convert UUID to SQL Server format
-	sqlServerUUID := toSQLServerUUID(ObjectID)
-	sqlUUID, _ := uuid.FromBytes(sqlServerUUID)
-	fmt.Println("UUID:", sqlUUID.String())
-	rows, err := r.db.Query(query, sqlUUID, isFolder, profileID)
+	//sqlServerUUID := toSQLServerUUID(ObjectID)
+	//sqlUUID, _ := uuid.FromBytes(sqlServerUUID)
+	//fmt.Println("UUID:", sqlUUID.String())
+	ObjectID, _ = TransformUUID(ObjectID)
+	fmt.Println("UUID oooo:", ObjectID)
+	rows, err := r.db.Query(query, ObjectID, isFolder, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}

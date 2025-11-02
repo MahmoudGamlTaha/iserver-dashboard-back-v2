@@ -5,6 +5,8 @@ import (
 	"enterprise-architect-api/repositories"
 	"fmt"
 	"math"
+
+	"github.com/google/uuid"
 )
 
 // ObjectContentService handles business logic for object contents
@@ -81,3 +83,6 @@ func (s *ObjectContentService) DeleteObjectContent(id int) error {
 	return s.repo.Delete(id)
 }
 
+func (s *ObjectContentService) DashboardCount(libraryId uuid.UUID) ([]models.DashboardCount, error) {
+	return s.repo.DashboardCount(libraryId)
+}

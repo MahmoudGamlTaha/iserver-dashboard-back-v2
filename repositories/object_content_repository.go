@@ -202,12 +202,15 @@ func (r *ObjectContentRepository) Delete(id int) error {
 
 func (r *ObjectContentRepository) DashboardCount(libraryID uuid.UUID) ([]models.DashboardCount, error) {
 
-	sql := ` select o.ExactObjectTypeID,COUNT(ObjectID) [count], ot.ObjectTypeName, ot.color, ot.icon from Object o
+	sql := ` select o.ExactObjectTypeID,COUNT(ObjectID) [count], ot.ObjectTypeName, ot.color, ot.icon, ea.name_en, ea.name_ar from Object o
 			inner join objecttype ot on ot.ObjectTypeID = o.ExactObjectTypeID
+		    left join EA_Tags_Dimentions ead on ead.object_type_id = o.ExactObjectTypeID
+			left join EA_Tags ea on ea.id = ead.ea_tag_id
 			where o.LibraryId = @p1
 			and o.GeneralType <> dbo.const_GeneralType_Folder()
+		
 
-			group by o.ExactObjectTypeID, ot.ObjectTypeName, ot.color, ot.icon`
+			group by o.ExactObjectTypeID, ot.ObjectTypeName, ot.color, ot.icon, ea.name_en, ea.name_ar`
 	fmt.Println("libraryID:", libraryID)
 	//sqlServerUUID := toSQLServerUUID(libraryID)
 	//sqlUUID, _ := uuid.FromBytes(sqlServerUUID)
@@ -224,13 +227,98 @@ func (r *ObjectContentRepository) DashboardCount(libraryID uuid.UUID) ([]models.
 	for resultSet.Next() {
 		var dashboardCount models.DashboardCount
 		err := resultSet.Scan(&dashboardCount.ExactObjectTypeID, &dashboardCount.Count,
-			&dashboardCount.ObjectTypeName, &dashboardCount.Color, &dashboardCount.Icon)
+			&dashboardCount.ObjectTypeName, &dashboardCount.Color, &dashboardCount.Icon, &dashboardCount.NameEn, &dashboardCount.NameAr)
 
 		if err != nil {
-			fmt.Errorf("error scanning folder: %w", err)
-			return nil, err
+			return nil, fmt.Errorf("error scanning folder: %w", err)
 		}
 		dashboardCounts = append(dashboardCounts, dashboardCount)
 	}
 	return dashboardCounts, nil
+}
+
+func (r *ObjectContentRepository) DashboardCountGrouped(libraryID uuid.UUID) ([]models.GroupedDashboardCategory, error) {
+	sql := ` select o.ExactObjectTypeID,COUNT(ObjectID) [count], ot.ObjectTypeName, ot.color, ot.icon, ea.name_en, ea.name_ar from Object o
+			inner join objecttype ot on ot.ObjectTypeID = o.ExactObjectTypeID
+		    left join EA_Tags_Dimentions ead on ead.object_type_id = o.ExactObjectTypeID
+			left join EA_Tags ea on ea.id = ead.ea_tag_id
+			where o.LibraryId = @p1
+			and o.GeneralType <> dbo.const_GeneralType_Folder()
+		
+			group by o.ExactObjectTypeID, ot.ObjectTypeName, ot.color, ot.icon, ea.name_en, ea.name_ar
+			order by ea.name_ar, ot.ObjectTypeName`
+
+	resultSet, err := r.db.Query(sql, &libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer resultSet.Close()
+
+	// Map to group items by category
+	categoryMap := make(map[string]*models.GroupedDashboardCategory)
+	uncategorizedKey := "uncategorized"
+
+	for resultSet.Next() {
+		var dashboardCount models.DashboardCount
+		err := resultSet.Scan(&dashboardCount.ExactObjectTypeID, &dashboardCount.Count,
+			&dashboardCount.ObjectTypeName, &dashboardCount.Color, &dashboardCount.Icon, 
+			&dashboardCount.NameEn, &dashboardCount.NameAr)
+
+		if err != nil {
+			return nil, fmt.Errorf("error scanning dashboard count: %w", err)
+		}
+
+		// Determine category key and names
+		var categoryKey string
+		var categoryNameAr string
+		var categoryNameEn string
+
+		if dashboardCount.NameAr != nil && *dashboardCount.NameAr != "" {
+			categoryKey = *dashboardCount.NameAr
+			categoryNameAr = *dashboardCount.NameAr
+			if dashboardCount.NameEn != nil {
+				categoryNameEn = *dashboardCount.NameEn
+			} else {
+				categoryNameEn = *dashboardCount.NameAr
+			}
+		} else {
+			categoryKey = uncategorizedKey
+			categoryNameAr = "غير مصنف"
+			categoryNameEn = "Uncategorized"
+		}
+
+		// Get or create category
+		if _, exists := categoryMap[categoryKey]; !exists {
+			categoryMap[categoryKey] = &models.GroupedDashboardCategory{
+				CategoryNameAr: categoryNameAr,
+				CategoryNameEn: categoryNameEn,
+				TotalCount:     0,
+				Items:          []models.DashboardCount{},
+			}
+		}
+
+		// Add item to category
+		category := categoryMap[categoryKey]
+		category.Items = append(category.Items, dashboardCount)
+		if dashboardCount.Count != nil {
+			category.TotalCount += *dashboardCount.Count
+		}
+	}
+
+	// Convert map to slice
+	var categories []models.GroupedDashboardCategory
+	
+	// Add categorized items first
+	for key, category := range categoryMap {
+		if key != uncategorizedKey {
+			categories = append(categories, *category)
+		}
+	}
+	
+	// Add uncategorized at the end if it exists
+	if uncategorized, exists := categoryMap[uncategorizedKey]; exists {
+		categories = append(categories, *uncategorized)
+	}
+
+	return categories, nil
 }

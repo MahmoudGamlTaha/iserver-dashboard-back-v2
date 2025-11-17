@@ -129,3 +129,27 @@ func (h *ObjectContentHandler) GetDashboardStatistics(w http.ResponseWriter, r *
 
 	respondWithJSON(w, http.StatusOK, objectContents)
 }
+
+// GetDashboardStatisticsGrouped handles GET /api/dashboard/object-counts-grouped/{libraryId}
+func (h *ObjectContentHandler) GetDashboardStatisticsGrouped(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	libraryId, err := uuid.Parse(vars["libraryId"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid library ID", err.Error())
+		return
+	}
+
+	// Get viewType from query parameter (default: "list")
+	viewType := r.URL.Query().Get("viewType")
+	if viewType == "" {
+		viewType = "list"
+	}
+
+	groupedResponse, err := h.service.DashboardCountGrouped(libraryId, viewType)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve grouped dashboard statistics", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, groupedResponse)
+}

@@ -42,6 +42,8 @@ func main() {
 	profileRepo := repositories.NewProfileRepository(db)
 	objectContentRepo := repositories.NewObjectContentRepository(db)
 	folderRepo := repositories.NewFolderRepository(db)
+	attributeRepo := repositories.NewAttributeRepository(db)
+	reportConfigRepo := repositories.NewReportConfigRepository(db)
 
 	// Initialize services
 	objectService := services.NewObjectService(objectRepo)
@@ -49,6 +51,9 @@ func main() {
 	profileService := services.NewProfileService(profileRepo)
 	objectContentService := services.NewObjectContentService(objectContentRepo)
 	folderService := services.NewFolderService(folderRepo)
+	attributeService := services.NewAttributeService(attributeRepo)
+	fileObjectsService := services.NewFileObjectsService()
+	eaTagService := services.NewEATagService(reportConfigRepo)
 
 	// Initialize handlers
 	objectHandler := handlers.NewObjectHandler(objectService)
@@ -56,6 +61,9 @@ func main() {
 	profileHandler := handlers.NewProfileHandler(profileService)
 	objectContentHandler := handlers.NewObjectContentHandler(objectContentService)
 	folderHandler := handlers.NewFolderHandler(folderService)
+	attributeHandler := handlers.NewAttributeHandler(attributeService)
+	fileObjectsHandler := handlers.NewFileObjectsHandler(fileObjectsService)
+	eaTagHandler := handlers.NewEATagHandler(eaTagService)
 
 	// Setup router
 	router := mux.NewRouter()
@@ -72,6 +80,7 @@ func main() {
 	api.HandleFunc("/objects/{id}", objectHandler.GetObjectByID).Methods("GET")
 	api.HandleFunc("/objects/{id}", objectHandler.UpdateObject).Methods("PUT")
 	api.HandleFunc("/objects/{id}", objectHandler.DeleteObject).Methods("DELETE")
+	api.HandleFunc("/objects/{objectTypeID}/{libraryID}", objectHandler.GetObjectsByObjectTypeIDAndLibraryID).Methods("GET")
 
 	// ObjectType routes
 	api.HandleFunc("/object-types", objectTypeHandler.GetAllObjectTypes).Methods("GET")
@@ -100,6 +109,28 @@ func main() {
 
 	// Dashboard routes
 	api.HandleFunc("/dashboard/object-counts/{libraryId}", objectContentHandler.GetDashboardStatistics).Methods("GET")
+	api.HandleFunc("/dashboard/object-counts-grouped/{libraryId}", objectContentHandler.GetDashboardStatisticsGrouped).Methods("GET")
+
+	// Attribute routes
+	api.HandleFunc("/attributes", attributeHandler.GetAllAttributes).Methods("GET")
+	api.HandleFunc("/attributes", attributeHandler.CreateAttribute).Methods("POST")
+	api.HandleFunc("/attributes/{id}", attributeHandler.GetAttributeByID).Methods("GET")
+	api.HandleFunc("/attributes/{id}", attributeHandler.UpdateAttribute).Methods("PUT")
+	api.HandleFunc("/attributes/{id}", attributeHandler.DeleteAttribute).Methods("DELETE")
+	api.HandleFunc("/attributes/assign-to-object-type", attributeHandler.AssignAttributeToObjectType).Methods("POST")
+	api.HandleFunc("/attributies/object/{objectID}", attributeHandler.GetAttributeForObject).Methods("GET")
+
+	// File conversion routes
+	api.HandleFunc("/convert-visio", fileObjectsHandler.ConvertVisioToSVGHandler).Methods("POST")
+
+	// EA Tags routes
+	api.HandleFunc("/ea-tags", eaTagHandler.GetAllEATags).Methods("GET")
+	api.HandleFunc("/ea-tags", eaTagHandler.CreateEATag).Methods("POST")
+	api.HandleFunc("/ea-tags/{id}", eaTagHandler.GetEATagByID).Methods("GET")
+	api.HandleFunc("/ea-tags/{id}", eaTagHandler.UpdateEATag).Methods("PUT")
+	api.HandleFunc("/ea-tags/{id}", eaTagHandler.DeleteEATag).Methods("DELETE")
+	api.HandleFunc("/ea-tags/assign-dimension", eaTagHandler.AssignObjectTypeToDimention).Methods("POST")
+	api.HandleFunc("/ea-tags/assigned-dimension/{objectTypeID}", eaTagHandler.GetEAObjectTypesAssignedToDimension).Methods("GET")
 
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

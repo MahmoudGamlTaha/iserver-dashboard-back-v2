@@ -121,3 +121,19 @@ func (as *AttributeService) AssignAttributeToObjectType(req *models.AssignAttrib
 
 	return as.attributeRepository.AssignAttributeToObjectType(req)
 }
+
+func (as *AttributeService) GetAttributeAssignments(objectTypeId int, relationTypeId uuid.UUID) ([]models.AttributeAssignment, error) {
+	if objectTypeId <= 0 {
+		return nil, fmt.Errorf("object type ID must be provided")
+	}
+	var err error
+	// Handle empty relationTypeId - will match both NULL and empty GUID in database
+	if relationTypeId == uuid.Nil {
+		relationTypeId, err = uuid.Parse("00000000-0000-0000-0000-000000000000")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error parsing relation type ID: %w", err)
+	}
+
+	return as.attributeRepository.GetAttributeAssignments(objectTypeId, relationTypeId)
+}

@@ -59,3 +59,17 @@ type AssignAttributeToObjectTypeRequest struct {
 	AttributeGroupName string    `json:"attributeGroupName"`
 	AttributeId        uuid.UUID `json:"attributeId"`
 }
+type AttributeAssignment struct {
+	AttributeId         uuid.UUID `json:"attributeId" db:"AttributeId"`
+	AttributeName       string    `json:"attributeName" db:"AttributeName"`
+	AttributeType       string    `json:"attributeType" db:"AttributeType"`
+	Description         string    `json:"description" db:"Description"`
+	TooltipText         string    `json:"tooltipText" db:"tooltipText"`
+	AttributeGroupId    uuid.UUID `json:"attributeGroupId" db:"AttributeGroupId"`
+	ObjectTypeId        int       `json:"objectTypeId" db:"ObjectTypeId"`
+	RelationTypeId      uuid.UUID `json:"relationTypeId" db:"RelationTypeId"`
+	GeneralType         string    `json:"generalType" db:"GeneralType"`
+	SequenceWithinGroup int       `json:"sequenceWithinGroup" db:"SequenceWithinGroup"`
+	AttributeGroupName  string    `json:"attributeGroupName" db:"AttributeGroupName"`
+	ObjectTypeName      string    `json:"objectTypeName" db:"ObjectTypeName"`
+}

@@ -370,11 +370,11 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 		FROM dbo.AttributeGroup AS ag (NOLOCK) 
 		INNER JOIN dbo.AttributeGroupAssigned AS aga ON aga.AttributeGroupId = ag.AttributeGroupId 
 		WHERE ag.AttributeGroupName = @p1 
-		AND ((@p2 > 0 AND aga.ObjectTypeId = @p2) OR (@p3 <> @p4 AND aga.RelationTypeId = @p3))
+		AND (aga.ObjectTypeId > 0 AND aga.ObjectTypeId = @p2) OR (aga.RelationTypeId <>  dbo.const_GuidEmpty() AND aga.RelationTypeId = @p3)
 	`
 
 	var existingGroupId uuid.UUID
-	err = tx.QueryRow(checkGroupQuery, req.AttributeGroupName, req.ObjectTypeId, req.RelationTypeId, emptyGuid).Scan(&existingGroupId)
+	err = tx.QueryRow(checkGroupQuery, req.AttributeGroupName, req.ObjectTypeId, req.RelationTypeId).Scan(&existingGroupId)
 
 	if err == sql.ErrNoRows {
 		// Insert new AttributeGroup
@@ -398,11 +398,12 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 		SELECT AttributeGroupId 
 		FROM dbo.AttributeGroupAssigned (NOLOCK) 
 		WHERE AttributeGroupId = @p1 
-		AND ((@p2 > 0 AND ObjectTypeId = @p2) OR (@p3 <> @p4 AND RelationTypeId = @p3))
+		AND ((@p2 > 0 AND ObjectTypeId = @p2) OR (@p3 <> @p4 AND RelationTypeId = @p3)) 
+		AND AttributeGroupId <> @p5
 	`
 
 	var existingAssignment uuid.UUID
-	err = tx.QueryRow(checkGroupAssignedQuery, attributeGroupId, req.ObjectTypeId, req.RelationTypeId, emptyGuid).Scan(&existingAssignment)
+	err = tx.QueryRow(checkGroupAssignedQuery, attributeGroupId, req.ObjectTypeId, req.RelationTypeId, emptyGuid, req.AttributeGroupId).Scan(&existingAssignment)
 
 	if err == sql.ErrNoRows {
 		// Get max GroupSequence
@@ -410,9 +411,10 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 		getSequenceQuery := `
 			SELECT MAX(GroupSequence) 
 			FROM dbo.AttributeGroupAssigned (NOLOCK) 
-			WHERE ((@p1 > 0 AND ObjectTypeId = @p1) OR (@p2 <> @p3 AND RelationTypeId = @p2))
+			WHERE ((@p1 > 0 AND ObjectTypeId = @p1) OR (@p2 <> @p3 AND RelationTypeId = @p2)) 
+			AND AttributeGroupId <> @p4
 		`
-		err = tx.QueryRow(getSequenceQuery, req.ObjectTypeId, req.RelationTypeId, emptyGuid).Scan(&groupSequence)
+		err = tx.QueryRow(getSequenceQuery, req.ObjectTypeId, req.RelationTypeId, emptyGuid, req.AttributeGroupId).Scan(&groupSequence)
 		if err != nil && err != sql.ErrNoRows {
 			return fmt.Errorf("error getting group sequence: %w", err)
 		}
@@ -442,8 +444,9 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 		FROM dbo.AttributeAssigned (NOLOCK) 
 		WHERE AttributeGroupId = @p1 
 		AND ((@p2 > 0 AND ObjectTypeId = @p2) OR (@p3 <> @p4 AND RelationTypeId = @p3))
+		AND AttributeGroupId <> @p5
 	`
-	err = tx.QueryRow(getAttributeSequenceQuery, attributeGroupId, req.ObjectTypeId, req.RelationTypeId, emptyGuid).Scan(&sequenceWithinGroup)
+	err = tx.QueryRow(getAttributeSequenceQuery, attributeGroupId, req.ObjectTypeId, req.RelationTypeId, emptyGuid, req.AttributeGroupId).Scan(&sequenceWithinGroup)
 	if err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("error getting attribute sequence: %w", err)
 	}
@@ -452,12 +455,16 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 	if sequenceWithinGroup.Valid {
 		attrSequence = int(sequenceWithinGroup.Int32) + 1
 	}
-
+	fmt.Println("attributeGroupId : ", attributeGroupId)
 	// Insert AttributeAssigned
 	insertAttributeAssignedQuery := `
 		INSERT INTO dbo.AttributeAssigned (ObjectTypeId, RelationTypeId, AttributeId, AttributeGroupId, SequenceWithinGroup)
 		VALUES (@p1, @p2, @p3, @p4, @p5)
 	`
+	attributeGroupId, _ = TransformUUID(attributeGroupId)
+
+	fmt.Println("attributeGroupId v4: ", attributeGroupId)
+
 	_, err = tx.Exec(insertAttributeAssignedQuery, req.ObjectTypeId, req.RelationTypeId, req.AttributeId, attributeGroupId, attrSequence)
 	if err != nil {
 		return fmt.Errorf("error inserting attribute assigned: %w", err)
@@ -469,4 +476,70 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 	}
 
 	return nil
+}
+func (r *AttributeRepository) GetAttributeAssignments(objectTypeId int, relationTypeId uuid.UUID) ([]models.AttributeAssignment, error) {
+	query := `
+        SELECT a.AttributeId,
+            a.AttributeName,
+            a.AttributeType,
+            a.Description,
+            a.tooltipText,
+            aa.AttributeGroupId,
+            aa.ObjectTypeId, 
+            aa.RelationTypeId,
+            ot.GeneralType,
+            aa.SequenceWithinGroup,
+            ag.AttributeGroupName,
+            ot.ObjectTypeName
+        FROM vwAttribute a
+        JOIN AttributeAssigned aa (NOLOCK)
+            ON a.AttributeId = aa.AttributeId
+        LEFT JOIN ObjectType ot
+            ON aa.ObjectTypeId = ot.ObjectTypeId
+        LEFT JOIN AttributeGroup ag ON ag.AttributeGroupId = aa.AttributeGroupId
+        WHERE aa.ObjectTypeId = @p1
+    `
+
+	// Add relationTypeId condition if not empty
+	var rows *sql.Rows
+	var err error
+
+	if relationTypeId != uuid.Nil {
+		query += " AND aa.RelationTypeId = @p2"
+		rows, err = r.db.Query(query, objectTypeId, relationTypeId)
+	} else {
+		rows, err = r.db.Query(query, objectTypeId)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	var assignments []models.AttributeAssignment
+	for rows.Next() {
+		var assignment models.AttributeAssignment
+		err := rows.Scan(
+			&assignment.AttributeId,
+			&assignment.AttributeName,
+			&assignment.AttributeType,
+			&assignment.Description,
+			&assignment.TooltipText,
+			&assignment.AttributeGroupId,
+			&assignment.ObjectTypeId,
+			&assignment.RelationTypeId,
+			&assignment.GeneralType,
+			&assignment.SequenceWithinGroup,
+			&assignment.AttributeGroupName,
+			&assignment.ObjectTypeName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning attribute assignment: %w", err)
+		}
+		assignment.AttributeGroupId, _ = TransformUUID(assignment.AttributeGroupId)
+		assignment.RelationTypeId, _ = TransformUUID(assignment.RelationTypeId)
+		assignments = append(assignments, assignment)
+	}
+
+	return assignments, nil
 }

@@ -114,11 +114,12 @@ func main() {
 	// Attribute routes
 	api.HandleFunc("/attributes", attributeHandler.GetAllAttributes).Methods("GET")
 	api.HandleFunc("/attributes", attributeHandler.CreateAttribute).Methods("POST")
+	api.HandleFunc("/attributes/assignments", attributeHandler.GetAttributeAssignments).Methods("GET")
+	api.HandleFunc("/attributes/assign-to-object-type", attributeHandler.AssignAttributeToObjectType).Methods("POST")
+	api.HandleFunc("/attributes/object/{objectID}", attributeHandler.GetAttributeForObject).Methods("GET")
 	api.HandleFunc("/attributes/{id}", attributeHandler.GetAttributeByID).Methods("GET")
 	api.HandleFunc("/attributes/{id}", attributeHandler.UpdateAttribute).Methods("PUT")
 	api.HandleFunc("/attributes/{id}", attributeHandler.DeleteAttribute).Methods("DELETE")
-	api.HandleFunc("/attributes/assign-to-object-type", attributeHandler.AssignAttributeToObjectType).Methods("POST")
-	api.HandleFunc("/attributies/object/{objectID}", attributeHandler.GetAttributeForObject).Methods("GET")
 
 	// File conversion routes
 	api.HandleFunc("/convert-visio", fileObjectsHandler.ConvertVisioToSVGHandler).Methods("POST")

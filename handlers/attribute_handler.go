@@ -140,3 +140,28 @@ func (ah *AttributeHandler) AssignAttributeToObjectType(w http.ResponseWriter, r
 		Message: "Attribute assigned to object type successfully",
 	})
 }
+
+func (ah *AttributeHandler) GetAttributeAssignments(w http.ResponseWriter, r *http.Request) {
+	objectTypeId, err := strconv.Atoi(r.URL.Query().Get("objectTypeId"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid objectTypeId", "objectTypeId must be a valid integer")
+		return
+	}
+
+	relationTypeId := uuid.Nil
+	if relationTypeIdStr := r.URL.Query().Get("relationTypeId"); relationTypeIdStr != "" {
+		var err error
+		relationTypeId, err = uuid.Parse(relationTypeIdStr)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid relationTypeId", err.Error())
+			return
+		}
+	}
+	assignments, err := ah.service.GetAttributeAssignments(objectTypeId, relationTypeId)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to get attribute assignments", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, assignments)
+}

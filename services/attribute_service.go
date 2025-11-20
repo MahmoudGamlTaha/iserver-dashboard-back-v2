@@ -137,3 +137,19 @@ func (as *AttributeService) GetAttributeAssignments(objectTypeId int, relationTy
 
 	return as.attributeRepository.GetAttributeAssignments(objectTypeId, relationTypeId)
 }
+
+// UnassignAttributeFromObjectType removes an attribute assignment from an object type
+func (as *AttributeService) UnassignAttributeFromObjectType(req *models.UnassignAttributeFromObjectTypeRequest) error {
+	// Validate required fields
+	if req.AttributeId.String() == "00000000-0000-0000-0000-000000000000" {
+		return fmt.Errorf("attribute ID is required")
+	}
+	if req.AttributeGroupId.String() == "00000000-0000-0000-0000-000000000000" {
+		return fmt.Errorf("attribute group ID is required")
+	}
+	if req.ObjectTypeId <= 0 && req.RelationTypeId.String() == "00000000-0000-0000-0000-000000000000" {
+		return fmt.Errorf("either object type ID or relation type ID must be provided")
+	}
+
+	return as.attributeRepository.UnassignAttributeFromObjectType(req)
+}

@@ -116,6 +116,7 @@ func main() {
 	api.HandleFunc("/attributes", attributeHandler.CreateAttribute).Methods("POST")
 	api.HandleFunc("/attributes/assignments", attributeHandler.GetAttributeAssignments).Methods("GET")
 	api.HandleFunc("/attributes/assign-to-object-type", attributeHandler.AssignAttributeToObjectType).Methods("POST")
+	api.HandleFunc("/attributes/unassign-from-object-type", attributeHandler.UnassignAttributeFromObjectType).Methods("DELETE")
 	api.HandleFunc("/attributes/object/{objectID}", attributeHandler.GetAttributeForObject).Methods("GET")
 	api.HandleFunc("/attributes/{id}", attributeHandler.GetAttributeByID).Methods("GET")
 	api.HandleFunc("/attributes/{id}", attributeHandler.UpdateAttribute).Methods("PUT")

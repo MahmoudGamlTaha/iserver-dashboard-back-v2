@@ -73,3 +73,10 @@ type AttributeAssignment struct {
 	AttributeGroupName  string    `json:"attributeGroupName" db:"AttributeGroupName"`
 	ObjectTypeName      string    `json:"objectTypeName" db:"ObjectTypeName"`
 }
+
+type UnassignAttributeFromObjectTypeRequest struct {
+	ObjectTypeId     int        `json:"objectTypeId"`
+	RelationTypeId   *uuid.UUID `json:"relationTypeId"`
+	AttributeGroupId uuid.UUID  `json:"attributeGroupId"`
+	AttributeId      uuid.UUID  `json:"attributeId"`
+}

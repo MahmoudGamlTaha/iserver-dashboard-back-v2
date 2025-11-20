@@ -165,3 +165,21 @@ func (ah *AttributeHandler) GetAttributeAssignments(w http.ResponseWriter, r *ht
 
 	respondWithJSON(w, http.StatusOK, assignments)
 }
+
+// UnassignAttributeFromObjectType handles DELETE /api/attributes/unassign-from-object-type
+func (ah *AttributeHandler) UnassignAttributeFromObjectType(w http.ResponseWriter, r *http.Request) {
+	var req models.UnassignAttributeFromObjectTypeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
+		return
+	}
+
+	if err := ah.service.UnassignAttributeFromObjectType(&req); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to unassign attribute from object type", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, models.SuccessResponse{
+		Message: "Attribute unassigned from object type successfully",
+	})
+}

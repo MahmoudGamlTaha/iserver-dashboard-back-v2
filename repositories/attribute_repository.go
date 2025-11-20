@@ -374,15 +374,19 @@ func (r *AttributeRepository) AssignAttributeToObjectType(req *models.AssignAttr
 	`
 
 	var existingGroupId uuid.UUID
-	err = tx.QueryRow(checkGroupQuery, req.AttributeGroupName, req.ObjectTypeId, req.RelationTypeId).Scan(&existingGroupId)
-
+	if attributeGroupId != uuid.MustParse("00000000-0000-0000-0000-000000000001") {
+		err = tx.QueryRow(checkGroupQuery, req.AttributeGroupName, req.ObjectTypeId, req.RelationTypeId).Scan(&existingGroupId)
+	} else {
+		err = sql.ErrNoRows
+	}
 	if err == sql.ErrNoRows {
 		// Insert new AttributeGroup
 		insertGroupQuery := `
-			INSERT INTO dbo.AttributeGroup (AttributeGroupId, AttributeGroupName)
-			VALUES (@p1, @p2)
-		`
-		_, err = tx.Exec(insertGroupQuery, req.AttributeGroupId, req.AttributeGroupName)
+		INSERT INTO dbo.AttributeGroup (AttributeGroupId, AttributeGroupName)
+		OUTPUT INSERTED.AttributeGroupId
+		VALUES (NEWID(), @p1)`
+
+		err = tx.QueryRow(insertGroupQuery, req.AttributeGroupName).Scan(&attributeGroupId)
 		if err != nil {
 			return fmt.Errorf("error inserting attribute group: %w", err)
 		}
@@ -542,4 +546,92 @@ func (r *AttributeRepository) GetAttributeAssignments(objectTypeId int, relation
 	}
 
 	return assignments, nil
+}
+
+// UnassignAttributeFromObjectType removes an attribute assignment from an object type
+func (r *AttributeRepository) UnassignAttributeFromObjectType(req *models.UnassignAttributeFromObjectTypeRequest) error {
+	// Start transaction
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	//emptyGuid := uuid.MustParse("00000000-0000-0000-0000-000000000000")
+	fmt.Println("req.AttributeId : ", req.AttributeId)
+	fmt.Println("req.AttributeGroupId : ", req.AttributeGroupId)
+	fmt.Println("req.ObjectTypeId : ", req.ObjectTypeId)
+	fmt.Println("req.RelationTypeId : ", req.RelationTypeId)
+	req.AttributeId, _ = TransformUUID(req.AttributeId)
+	req.AttributeGroupId, _ = TransformUUID(req.AttributeGroupId)
+	// Delete from AttributeAssigned
+	deleteAttributeAssignedQuery := `
+		DELETE FROM dbo.AttributeAssigned 
+		WHERE AttributeId = @p1 
+		AND AttributeGroupId = @p2
+		AND ((@p3 > 0 AND ObjectTypeId = @p3))
+	`
+
+	result, err := tx.Exec(deleteAttributeAssignedQuery, req.AttributeId, req.AttributeGroupId, req.ObjectTypeId)
+	if err != nil {
+		return fmt.Errorf("error deleting attribute assignment: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error getting rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("attribute assignment not found")
+	}
+
+	// Check if AttributeGroup still has any attributes assigned for this object type
+	checkGroupHasAttributesQuery := `
+		SELECT COUNT(*) 
+		FROM dbo.AttributeAssigned (NOLOCK) 
+		WHERE AttributeGroupId = @p1
+		AND ((@p2 > 0 AND ObjectTypeId = @p2))
+	`
+	//OR (@p3 <> @p4 AND RelationTypeId = @p3))
+	var attributeCount int
+	err = tx.QueryRow(checkGroupHasAttributesQuery, req.AttributeGroupId, req.ObjectTypeId).Scan(&attributeCount)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("error checking attribute group: %w", err)
+	}
+
+	// If no attributes left in the group for this object type, delete AttributeGroupAssigned
+	if attributeCount == 0 {
+		// Delete AttributeGroupAssigned
+		deleteGroupAssignedQuery := `
+			DELETE FROM dbo.AttributeGroupAssigned 
+			WHERE AttributeGroupId = @p1 
+			AND ((@p2 > 0 AND ObjectTypeId = @p2)) 
+		`
+		_, err = tx.Exec(deleteGroupAssignedQuery, req.AttributeGroupId, req.ObjectTypeId)
+		if err != nil {
+			return fmt.Errorf("error deleting attribute group assignment: %w", err)
+		}
+
+		// Delete AttributeGroup if not used elsewhere
+		deleteGroupQuery := `
+			DELETE FROM dbo.AttributeGroup 
+			WHERE AttributeGroupId = @p1 
+			AND NOT EXISTS (
+				SELECT 1 FROM dbo.AttributeGroupAssigned 
+				WHERE AttributeGroupId = @p1
+			)
+		`
+		_, err = tx.Exec(deleteGroupQuery, req.AttributeGroupId)
+		if err != nil {
+			return fmt.Errorf("error deleting attribute group: %w", err)
+		}
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
 }

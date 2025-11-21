@@ -17,8 +17,8 @@ func NewAttributeService(attributeRepository *repositories.AttributeRepository) 
 	return &AttributeService{attributeRepository: attributeRepository}
 }
 
-func (as *AttributeService) GetAttributeForObject(objectID uuid.UUID) ([]models.AssignedAttribute, error) {
-	return as.attributeRepository.GetAttributeForObject(objectID)
+func (as *AttributeService) GetAttributeForObject(objectID uuid.UUID, objectTypeId *int) (*models.ObjectInstanceAttribute, error) {
+	return as.attributeRepository.GetAttributeForObject(objectID, objectTypeId)
 }
 
 // CreateAttribute creates a new attribute

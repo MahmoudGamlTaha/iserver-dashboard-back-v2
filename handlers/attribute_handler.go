@@ -26,7 +26,17 @@ func (ah *AttributeHandler) GetAttributeForObject(w http.ResponseWriter, r *http
 		return
 	}
 
-	attributes, err := ah.service.GetAttributeForObject(uuid.Must(uuid.Parse(objectID)))
+	var objectTypeIdPtr *int
+	if objectTypeIdStr := r.URL.Query().Get("objectTypeId"); objectTypeIdStr != "" {
+		objectTypeId, err := strconv.Atoi(objectTypeIdStr)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid objectTypeId", "objectTypeId must be a valid integer")
+			return
+		}
+		objectTypeIdPtr = &objectTypeId
+	}
+
+	attributes, err := ah.service.GetAttributeForObject(uuid.Must(uuid.Parse(objectID)), objectTypeIdPtr)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "error retrieving attributes", err.Error())
 		return

@@ -17,7 +17,7 @@ func NewAttributeRepository(db *sql.DB) *AttributeRepository {
 	return &AttributeRepository{db: db}
 }
 
-func (r *AttributeRepository) GetAttributeForObject(objectID uuid.UUID) ([]models.AssignedAttribute, error) {
+func (r *AttributeRepository) GetAttributeForObject(objectID uuid.UUID, objectTypeId *int) (*models.ObjectInstanceAttribute, error) {
 	sql := `SELECT attr.AttributeId,
 			attr.objectId,
 			attr.versionId,
@@ -46,6 +46,7 @@ func (r *AttributeRepository) GetAttributeForObject(objectID uuid.UUID) ([]model
 	defer rows.Close()
 
 	var attributes []models.AssignedAttribute
+	var objectInstanceAttribute models.ObjectInstanceAttribute
 	for rows.Next() {
 		var attribute models.AssignedAttribute
 		err := rows.Scan(
@@ -68,8 +69,76 @@ func (r *AttributeRepository) GetAttributeForObject(objectID uuid.UUID) ([]model
 		}
 		attributes = append(attributes, attribute)
 	}
+	var attributesRelateds []models.ObjectTypeAssignedAttribute
+	if objectTypeId != nil && *objectTypeId > 0 {
+		sql = `SELECT a.AttributeId,
+            a.AttributeName,
+            a.AttributeType,
+            a.Description,
+            a.tooltipText,
+			a.TextDefaultValue,
+			a.IntDefaultValue,
+			a.BoolDefaultValue,
+			a.listType,
+			a.ListDefaultValue,
+			a.ListValues,
+            aa.AttributeGroupId,
+            aa.ObjectTypeId, 
+            aa.RelationTypeId,
+            ot.GeneralType,
+            aa.SequenceWithinGroup,
+            ag.AttributeGroupName,
+            ot.ObjectTypeName
+            FROM vwAttribute a
+        JOIN AttributeAssigned aa (NOLOCK)
+            ON a.AttributeId = aa.AttributeId
+        left JOIN AttributeGroup ag ON ag.AttributeGroupId = aa.AttributeGroupId
+		  LEFT JOIN ObjectType ot
+            ON aa.ObjectTypeId = ot.ObjectTypeId
+        WHERE aa.ObjectTypeId = @p1`
 
-	return attributes, nil
+		rows, err = r.db.Query(sql, *objectTypeId)
+		if err != nil {
+			return nil, fmt.Errorf("error executing query: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var attributesRelated models.ObjectTypeAssignedAttribute
+			err := rows.Scan(
+				&attributesRelated.AttributeId,
+				&attributesRelated.AttributeName,
+				&attributesRelated.AttributeType,
+				&attributesRelated.Description,
+				&attributesRelated.TooltipText,
+				&attributesRelated.TextDefaultValue,
+				&attributesRelated.IntDefaultValue,
+				&attributesRelated.BoolDefaultValue,
+				&attributesRelated.ListType,
+				&attributesRelated.ListDefaultValue,
+				&attributesRelated.ListValues,
+				&attributesRelated.AttributeGroupId,
+				&attributesRelated.ObjectTypeId,
+				&attributesRelated.RelationTypeId,
+				&attributesRelated.GeneralType,
+				&attributesRelated.SequenceWithinGroup,
+				&attributesRelated.AttributeGroupName,
+				&attributesRelated.ObjectTypeName,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error scanning attribute: %w", err)
+			}
+			attributesRelateds = append(attributesRelateds, attributesRelated)
+		}
+	}
+	objectInstanceAttribute.AssignedAttribute = attributesRelateds
+	objectInstanceAttribute.AssignedAttributesValues = attributes
+	objectInstanceAttribute.Success = true
+	objectInstanceAttribute.Message = "Attributes retrieved successfully"
+	return &objectInstanceAttribute, nil
+}
+func (r *AttributeRepository) GetRelatedAttributeForObject(objectID uuid.UUID) {
+
 }
 
 // ExistsByName checks if an attribute with the given name already exists

@@ -6,20 +6,51 @@ import (
 	"github.com/google/uuid"
 )
 
+type General struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
 type AssignedAttribute struct {
-	AttributeID   uuid.UUID
-	ObjectId      uuid.UUID
-	VersionId     uuid.UUID
-	DataType      string
-	TextValue     *string
-	RichTextValue *string
-	BooleanValue  *bool
-	IntegerValue  *int
-	FloatValue    *float64
-	DateValue     *time.Time
-	AttributeType string
-	AttributeName string
-	IsMandatory   bool
+	AttributeID   uuid.UUID  `json:"attributeId" db:"AttributeId"`
+	ObjectId      uuid.UUID  `json:"objectId" db:"ObjectId"`
+	VersionId     uuid.UUID  `json:"versionId" db:"VersionId"`
+	DataType      string     `json:"dataType" db:"DataType"`
+	TextValue     *string    `json:"textValue,omitempty" db:"TextValue"`
+	RichTextValue *string    `json:"richTextValue,omitempty" db:"RichTextValue"`
+	BooleanValue  *bool      `json:"booleanValue,omitempty" db:"BooleanValue"`
+	IntegerValue  *int       `json:"integerValue,omitempty" db:"IntegerValue"`
+	FloatValue    *float64   `json:"floatValue,omitempty" db:"FloatValue"`
+	DateValue     *time.Time `json:"dateValue,omitempty" db:"DateValue"`
+	AttributeType string     `json:"attributeType" db:"AttributeType"`
+	AttributeName string     `json:"attributeName" db:"AttributeName"`
+	IsMandatory   bool       `json:"isMandatory" db:"IsMandatory"`
+	ObjectTypeId  int        `json:"objectTypeId" db:"objectTypeId"`
+}
+type ObjectTypeAssignedAttribute struct {
+	AttributeId         uuid.UUID `json:"attributeId" db:"AttributeId"`
+	AttributeName       string    `json:"attributeName" db:"AttributeName"`
+	AttributeType       string    `json:"attributeType" db:"AttributeType"`
+	Description         string    `json:"description" db:"Description"`
+	TooltipText         string    `json:"tooltipText" db:"TooltipText"`
+	TextDefaultValue    *string   `json:"textDefaultValue,omitempty" db:"TextDefaultValue"`
+	IntDefaultValue     *int64    `json:"intDefaultValue,omitempty" db:"IntDefaultValue"`
+	BoolDefaultValue    *bool     `json:"boolDefaultValue,omitempty" db:"BoolDefaultValue"`
+	ListType            *uint8    `json:"listType,omitempty" db:"ListType"`
+	ListDefaultValue    *int      `json:"listDefaultValue,omitempty" db:"ListDefaultValue"`
+	ListValues          *string   `json:"listValues,omitempty" db:"ListValues"`
+	AttributeGroupId    uuid.UUID `json:"attributeGroupId" db:"AttributeGroupId"`
+	ObjectTypeId        int       `json:"objectTypeId" db:"ObjectTypeId"`
+	RelationTypeId      uuid.UUID `json:"relationTypeId" db:"RelationTypeId"`
+	GeneralType         *string   `json:"generalType" db:"GeneralType"`
+	SequenceWithinGroup int       `json:"sequenceWithinGroup" db:"SequenceWithinGroup"`
+	AttributeGroupName  string    `json:"attributeGroupName" db:"AttributeGroupName"`
+	ObjectTypeName      *string   `json:"objectTypeName" db:"ObjectTypeName"`
+}
+
+type ObjectInstanceAttribute struct {
+	AssignedAttribute        []ObjectTypeAssignedAttribute
+	AssignedAttributesValues []AssignedAttribute
+	General
 }
 
 type Attribute struct {
@@ -68,10 +99,10 @@ type AttributeAssignment struct {
 	AttributeGroupId    uuid.UUID `json:"attributeGroupId" db:"AttributeGroupId"`
 	ObjectTypeId        int       `json:"objectTypeId" db:"ObjectTypeId"`
 	RelationTypeId      uuid.UUID `json:"relationTypeId" db:"RelationTypeId"`
-	GeneralType         string    `json:"generalType" db:"GeneralType"`
+	GeneralType         *string   `json:"generalType" db:"GeneralType"`
 	SequenceWithinGroup int       `json:"sequenceWithinGroup" db:"SequenceWithinGroup"`
 	AttributeGroupName  string    `json:"attributeGroupName" db:"AttributeGroupName"`
-	ObjectTypeName      string    `json:"objectTypeName" db:"ObjectTypeName"`
+	ObjectTypeName      *string   `json:"objectTypeName" db:"ObjectTypeName"`
 }
 
 type UnassignAttributeFromObjectTypeRequest struct {

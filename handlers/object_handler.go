@@ -163,3 +163,40 @@ func (h *ObjectHandler) GetHierarchyFolder(w http.ResponseWriter, r *http.Reques
 	}
 	respondWithJSON(w, http.StatusOK, response)
 }
+
+// GetObjectsByObjectTypeIDAndLibraryID handles GET /api/objects/type/{objectTypeID}/library/{libraryID}
+func (h *ObjectHandler) GetObjectsByObjectTypeIDAndLibraryID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	objectTypeID, err := strconv.Atoi(vars["objectTypeID"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid object type ID", err.Error())
+		return
+	}
+	libraryID, err := uuid.Parse(vars["libraryID"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid library ID", err.Error())
+		return
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+	if pageSize == 0 {
+		pageSize = 20
+	}
+	// Fix: Capture all 3 return values from the service method
+	objects, totalCount, err := h.service.GetObjectsByObjectTypeIDAndLibraryID(objectTypeID, libraryID, page, pageSize)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve objects by type and library", err.Error())
+		return
+	}
+
+	// Build paginated response
+	response := models.PaginatedResponse{
+		Data:       objects,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalCount: totalCount,
+		TotalPages: (totalCount + pageSize - 1) / pageSize,
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}

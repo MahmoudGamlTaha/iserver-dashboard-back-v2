@@ -50,4 +50,20 @@ type DashboardCount struct {
 	Count             *int64  `json:"count" db:"count"`
 	Color             *int64  `json:"color" db:"color"`
 	Icon              *int64  `json:"icon" db:"icon"`
+	NameEn            *string `json:"nameEn" db:"name_en"`
+	NameAr            *string `json:"nameAr" db:"name_ar"`
+}
+
+// GroupedDashboardCategory represents a category group in the dashboard
+type GroupedDashboardCategory struct {
+	CategoryNameAr string           `json:"categoryNameAr"`
+	CategoryNameEn string           `json:"categoryNameEn"`
+	TotalCount     int64            `json:"totalCount"`
+	Items          []DashboardCount `json:"items"`
+}
+
+// GroupedDashboardResponse represents the grouped dashboard response
+type GroupedDashboardResponse struct {
+	Categories []GroupedDashboardCategory `json:"categories"`
+	ViewType   string                     `json:"viewType"` // "list" or "cards"
 }

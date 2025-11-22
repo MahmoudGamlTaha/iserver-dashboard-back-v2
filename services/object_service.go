@@ -14,6 +14,10 @@ type ObjectService struct {
 	repo *repositories.ObjectRepository
 }
 
+func (s *ObjectService) GetObjectsByObjectTypeIDAndLibraryID(objectTypeID int, libraryID uuid.UUID, page int, pageSize int) ([]models.Object, int, error) {
+	return s.repo.GetByObjectTypeIDAndLibraryID(objectTypeID, libraryID, page, pageSize)
+}
+
 // NewObjectService creates a new ObjectService
 func NewObjectService(repo *repositories.ObjectRepository) *ObjectService {
 	return &ObjectService{repo: repo}

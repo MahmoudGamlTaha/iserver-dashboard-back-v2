@@ -86,3 +86,24 @@ func (s *ObjectContentService) DeleteObjectContent(id int) error {
 func (s *ObjectContentService) DashboardCount(libraryId uuid.UUID) ([]models.DashboardCount, error) {
 	return s.repo.DashboardCount(libraryId)
 }
+
+// DashboardCountGrouped retrieves dashboard counts grouped by category with specified view type
+func (s *ObjectContentService) DashboardCountGrouped(libraryId uuid.UUID, viewType string) (*models.GroupedDashboardResponse, error) {
+	// Validate viewType
+	if viewType == "" {
+		viewType = "list"
+	}
+	if viewType != "list" && viewType != "cards" {
+		return nil, fmt.Errorf("invalid view type: must be 'list' or 'cards'")
+	}
+
+	categories, err := s.repo.DashboardCountGrouped(libraryId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.GroupedDashboardResponse{
+		Categories: categories,
+		ViewType:   viewType,
+	}, nil
+}

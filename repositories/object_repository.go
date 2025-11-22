@@ -479,7 +479,7 @@ func (r *ObjectRepository) GetHierarchyFolder(ObjectID uuid.UUID, profileID int,
 	//sqlUUID, _ := uuid.FromBytes(sqlServerUUID)
 	//fmt.Println("UUID:", sqlUUID.String())
 	ObjectID, _ = TransformUUID(ObjectID)
-	fmt.Println("UUID oooo:", ObjectID)
+
 	rows, err := r.db.Query(query, ObjectID, isFolder, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
@@ -547,4 +547,124 @@ func (r *ObjectRepository) GetHierarchyFolder(ObjectID uuid.UUID, profileID int,
 	}
 
 	return objects, nil
+}
+
+func (r *ObjectRepository) GetByObjectTypeIDAndLibraryID(objectTypeID int, libraryID uuid.UUID, page, pageSize int) ([]models.Object, int, error) {
+	offset := (page - 1) * pageSize
+	if offset < 0 {
+		offset = 0
+	}
+	// Transform UUID to SQL Server format before queries
+	libraryID, _ = TransformUUID(libraryID)
+
+	// Get total count
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM [Object] WHERE ExactObjectTypeID = @p1 AND LibraryId = @p2`
+	err := r.db.QueryRow(countQuery, objectTypeID, libraryID).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error counting objects by type: %w", err)
+	}
+	// Get paginated results
+	query := `
+		SELECT ObjectID, ObjectName, ObjectDescription, ObjectTypeID, CheckedInVersionId, 
+			DeleteFlag, Locked, RequiresShapeSheetUpdate, TemplateID, IsImported, IsLibrary, 
+			LibraryId, FileExtension, SortOrder, Prefix, Suffix, ProvenanceId, ProvenanceVersionId, 
+			GeneralType, CurrentVersionId, VisioAlias, HasVisioAlias, DateCreated, CreatedBy, 
+			DateModified, ModifiedBy, IsCheckedOut, CheckedOutUserId, DeleteTransactionId, 
+			NameChecksum, ExactObjectTypeID, RichTextDescription, AutoSort
+		FROM [Object]
+		WHERE ExactObjectTypeID = @p1 AND LibraryId = @p2
+		ORDER BY DateCreated DESC
+		OFFSET @p3 ROWS FETCH NEXT @p4 ROWS ONLY
+	`
+	fmt.Println(query)
+	fmt.Println(objectTypeID)
+	fmt.Println(libraryID)
+	fmt.Println(offset)
+	fmt.Println(pageSize)
+	rows, err := r.db.Query(query, objectTypeID, libraryID, offset, pageSize)
+	fmt.Println(rows)
+	fmt.Println(err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error retrieving objects by type: %w", err)
+	}
+	defer rows.Close()
+
+	var objects []models.Object
+	for rows.Next() {
+		var obj models.Object
+		var objectIDBytes []byte
+		var checkedInVersionIDBytes, libraryIDBytes, provenanceIDBytes, provenanceVersionIDBytes, currentVersionIDBytes, deleteTransactionIDBytes []byte
+
+		err := rows.Scan(
+			&objectIDBytes, &obj.ObjectName, &obj.ObjectDescription, &obj.ObjectTypeID, &checkedInVersionIDBytes,
+			&obj.DeleteFlag, &obj.Locked, &obj.RequiresShapeSheetUpdate, &obj.TemplateID, &obj.IsImported,
+			&obj.IsLibrary, &libraryIDBytes, &obj.FileExtension, &obj.SortOrder, &obj.Prefix, &obj.Suffix,
+			&provenanceIDBytes, &provenanceVersionIDBytes, &obj.GeneralType, &currentVersionIDBytes,
+			&obj.VisioAlias, &obj.HasVisioAlias, &obj.DateCreated, &obj.CreatedBy, &obj.DateModified,
+			&obj.ModifiedBy, &obj.IsCheckedOut, &obj.CheckedOutUserId, &deleteTransactionIDBytes,
+			&obj.NameChecksum, &obj.ExactObjectTypeID, &obj.RichTextDescription, &obj.AutoSort,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error scanning object: %w", err)
+		}
+
+		// Parse UUID from bytes
+		obj.ObjectID, err = parseSQLServerUUID(objectIDBytes)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error parsing ObjectID: %w", err)
+		}
+
+		if checkedInVersionIDBytes != nil {
+			parsedUUID, err := parseSQLServerUUID(checkedInVersionIDBytes)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing CheckedInVersionId: %w", err)
+			}
+			obj.CheckedInVersionId = &parsedUUID
+		}
+
+		if libraryIDBytes != nil {
+			parsedUUID, err := parseSQLServerUUID(libraryIDBytes)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing LibraryId: %w", err)
+			}
+			obj.LibraryId = &parsedUUID
+		}
+
+		if provenanceIDBytes != nil {
+			parsedUUID, err := parseSQLServerUUID(provenanceIDBytes)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing ProvenanceId: %w", err)
+			}
+			obj.ProvenanceId = &parsedUUID
+		}
+
+		if provenanceVersionIDBytes != nil {
+			parsedUUID, err := parseSQLServerUUID(provenanceVersionIDBytes)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing ProvenanceVersionId: %w", err)
+			}
+			obj.ProvenanceVersionId = &parsedUUID
+		}
+
+		if currentVersionIDBytes != nil {
+			parsedUUID, err := parseSQLServerUUID(currentVersionIDBytes)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing CurrentVersionId: %w", err)
+			}
+			obj.CurrentVersionId = &parsedUUID
+		}
+
+		if deleteTransactionIDBytes != nil {
+			parsedUUID, err := parseSQLServerUUID(deleteTransactionIDBytes)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing DeleteTransactionId: %w", err)
+			}
+			obj.DeleteTransactionId = &parsedUUID
+		}
+
+		objects = append(objects, obj)
+	}
+
+	return objects, totalCount, nil
 }

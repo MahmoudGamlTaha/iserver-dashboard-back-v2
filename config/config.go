@@ -6,6 +6,17 @@ import (
 	"strconv"
 )
 
+// File upload constants
+const (
+	MaxUploadSize = 50 << 20 // 50 MB
+	UploadDir     = ""        // Empty string uses system temp directory
+)
+
+// Environment variables used:
+// - LIBREOFFICE_PATH: Custom path to LibreOffice/soffice executable (optional)
+//   Example for Windows: C:\Program Files\LibreOffice\program\soffice.exe
+// - uploadDir: Custom directory for temporary file uploads (optional)
+
 // Config holds all configuration for the application
 type Config struct {
 	Server   ServerConfig

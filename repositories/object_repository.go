@@ -431,14 +431,15 @@ func (r *ObjectRepository) GetHierarchyFolder(ObjectID uuid.UUID, profileID int,
 		  , IsPendingApproval
 		  , CheckedOutBy
 		  , IsFirstVersionCheckedOut
-		  , FolderId)
+		  , FolderId,
+		  isFolder)
 		  AS
 	(
 		SELECT  o.*, 
 				CAST(CASE WHEN v.ApprovalStatus =  dbo.const_ApprovalStatus_PendingApproval() THEN 1 ELSE 0 END AS BIT) AS IsPendingApproval,
 				o.CheckedOutUserId AS CheckedOutBy, 
 				CAST(CASE WHEN v.SystemVersionNo = 1 AND o.IsCheckedOut = 1 THEN 1 ELSE 0 END AS BIT) AS IsFirstVersionCheckedOut,
-		        do.FolderId
+		        do.FolderId, do.isFolder AS isFolder
 		FROM vwFolderContents AS do
 		INNER JOIN vwObjectSimple AS o ON o.ObjectID = do.ObjectId
 		INNER JOIN [dbo].[Version] AS v on v.ID = o.CurrentVersionId
@@ -451,7 +452,7 @@ func (r *ObjectRepository) GetHierarchyFolder(ObjectID uuid.UUID, profileID int,
 				CAST(CASE WHEN v.ApprovalStatus =  dbo.const_ApprovalStatus_PendingApproval() THEN 1 ELSE 0 END AS BIT) AS IsPendingApproval,
 				o.CheckedOutUserId AS CheckedOutBy, 
 				CAST(CASE WHEN v.SystemVersionNo = 1 AND o.IsCheckedOut = 1 THEN 1 ELSE 0 END AS BIT) AS IsFirstVersionCheckedOut,
-		        do.FolderId
+		        do.FolderId, do.isFolder AS isFolder
 		FROM vwFolderContents AS do
 		INNER JOIN recurse ON do.FolderId = recurse.ObjectID
 		INNER JOIN vwObjectSimple AS o ON o.ObjectID = do.ObjectId
@@ -526,6 +527,7 @@ func (r *ObjectRepository) GetHierarchyFolder(ObjectID uuid.UUID, profileID int,
 			&obj.CheckedOutBy,
 			&obj.IsFirstVersionCheckedOut,
 			&obj.FolderId,
+			&obj.IsFolder,
 			// Additional fields from joins
 			&obj.CheckedInName,
 			&obj.CheckedInVisioAlias,

@@ -153,3 +153,24 @@ func (as *AttributeService) UnassignAttributeFromObjectType(req *models.Unassign
 
 	return as.attributeRepository.UnassignAttributeFromObjectType(req)
 }
+
+// UpdateAttributeValue updates the value of multiple attributes
+func (as *AttributeService) UpdateAttributeValue(attrs []models.AssignedAttribute) error {
+	if len(attrs) == 0 {
+		return fmt.Errorf("no attributes provided to update")
+	}
+
+	for _, attr := range attrs {
+		if attr.AttributeID == uuid.Nil {
+			return fmt.Errorf("attribute ID is required")
+		}
+		if attr.ObjectId == uuid.Nil {
+			return fmt.Errorf("object ID is required")
+		}
+		if attr.VersionId == uuid.Nil {
+			return fmt.Errorf("version ID is required")
+		}
+	}
+
+	return as.attributeRepository.UpdateAttributeValue(attrs)
+}

@@ -193,3 +193,21 @@ func (ah *AttributeHandler) UnassignAttributeFromObjectType(w http.ResponseWrite
 		Message: "Attribute unassigned from object type successfully",
 	})
 }
+
+// UpdateAttributeValue handles PUT /api/attributes/value
+func (ah *AttributeHandler) UpdateAttributeValue(w http.ResponseWriter, r *http.Request) {
+	var attrs []models.AssignedAttribute
+	if err := json.NewDecoder(r.Body).Decode(&attrs); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
+		return
+	}
+
+	if err := ah.service.UpdateAttributeValue(attrs); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to update attribute values", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, models.SuccessResponse{
+		Message: "Attribute values updated successfully",
+	})
+}

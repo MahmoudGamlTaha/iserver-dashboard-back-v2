@@ -5,6 +5,7 @@ import (
 	"enterprise-architect-api/models"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -698,6 +699,100 @@ func (r *AttributeRepository) UnassignAttributeFromObjectType(req *models.Unassi
 	}
 
 	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateAttributeValue updates the values of multiple attributes
+func (r *AttributeRepository) UpdateAttributeValue(attrs []models.AssignedAttribute) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	query := `
+		UPDATE AttributeValue
+		SET 
+			ValueText =
+				CASE WHEN DataType = 4 THEN @p1 ELSE ValueText END,
+
+			ValueBigInt =
+				CASE 
+					WHEN DataType = 1 THEN @p2      -- int
+					WHEN DataType = 5 THEN CASE WHEN @p3 = 1 THEN 1 ELSE 0 END  -- boolean
+					ELSE ValueBigInt
+				END,
+
+			ValueFloat =
+				CASE WHEN DataType = 3 THEN @p4 ELSE ValueFloat END,
+
+			ValueDate =
+				CASE WHEN DataType = 2 THEN @p5 ELSE ValueDate END,
+
+			ValueRichText =
+				CASE WHEN DataType = 6 THEN @p6 ELSE ValueRichText END
+		WHERE 
+			AttributeId = @p7
+			AND ObjectId = @p8
+			AND VersionId = @p9
+	`
+	fmt.Println("attrs : ", *attrs[0].TextValue)
+	for _, attr := range attrs {
+		// Transform UUIDs
+		attributeID, _ := TransformUUID(attr.AttributeID)
+		objectID, _ := TransformUUID(attr.ObjectId)
+		versionID, _ := TransformUUID(attr.VersionId)
+
+		var boolVal interface{}
+		if attr.BooleanValue != nil {
+			if *attr.BooleanValue {
+				boolVal = 1
+			} else {
+				boolVal = 0
+			}
+		}
+		var textValue string
+		if attr.TextValue != nil {
+			textValue = *attr.TextValue
+		}
+		var richTextValue string
+		if attr.RichTextValue != nil {
+			richTextValue = *attr.RichTextValue
+		}
+		var integerValue int64
+		if attr.IntegerValue != nil {
+			integerValue = int64(*attr.IntegerValue)
+		}
+		var floatValue float64
+		if attr.FloatValue != nil {
+			floatValue = *attr.FloatValue
+		}
+		var dateValue time.Time
+		if attr.DateValue != nil {
+			dateValue = *attr.DateValue
+		}
+
+		_, err := tx.Exec(query,
+			textValue,
+			integerValue,
+			boolVal,
+			floatValue,
+			dateValue,
+			richTextValue,
+			attributeID,
+			objectID,
+			versionID,
+		)
+
+		if err != nil {
+			return fmt.Errorf("error updating attribute value for AttributeId %s: %w", attr.AttributeID, err)
+		}
+	}
+
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing transaction: %w", err)
 	}

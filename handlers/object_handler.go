@@ -21,6 +21,24 @@ func NewObjectHandler(service *services.ObjectService) *ObjectHandler {
 	return &ObjectHandler{service: service}
 }
 
+// ImportObjects handles POST /api/objects/import
+func (h *ObjectHandler) ImportObjects(w http.ResponseWriter, r *http.Request) {
+	var req models.ObjectImportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
+		return
+	}
+
+	if err := h.service.ImportObjects(req); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to import objects", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, models.SuccessResponse{
+		Message: "Objects imported successfully",
+	})
+}
+
 // CreateObject handles POST /api/objects
 func (h *ObjectHandler) CreateObject(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateObjectRequest

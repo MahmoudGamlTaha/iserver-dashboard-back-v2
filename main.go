@@ -72,6 +72,7 @@ func main() {
 	api := router.PathPrefix("/api").Subrouter()
 	api.Use(loggingMiddleware)
 	// Object routes
+	api.HandleFunc("/objects/import", objectHandler.ImportObjects).Methods("POST")
 	api.HandleFunc("/objects", objectHandler.GetAllObjects).Methods("GET")
 	api.HandleFunc("/objects", objectHandler.CreateObject).Methods("POST")
 	api.HandleFunc("/objects/libraries", objectHandler.GetLibraries).Methods("GET")
@@ -83,6 +84,8 @@ func main() {
 	api.HandleFunc("/objects/{objectTypeID}/{libraryID}", objectHandler.GetObjectsByObjectTypeIDAndLibraryID).Methods("GET")
 
 	// ObjectType routes
+	api.HandleFunc("/object-types/folder-tree", objectTypeHandler.GetFolderRepositoryTree).Methods("GET")
+	api.HandleFunc("/object-types/search", objectTypeHandler.SearchObjectTypes).Methods("GET")
 	api.HandleFunc("/object-types", objectTypeHandler.GetAllObjectTypes).Methods("GET")
 	api.HandleFunc("/object-types", objectTypeHandler.CreateObjectType).Methods("POST")
 	api.HandleFunc("/object-types/{id}", objectTypeHandler.GetObjectTypeByID).Methods("GET")

@@ -158,3 +158,6 @@ func (s *ObjectService) GetObjectsByTypeID(objectTypeID, page, pageSize int) (*m
 func (s *ObjectService) GetHierarchyFolder(ObjectID uuid.UUID, profileID int, isFolder bool) ([]models.ObjectTree, error) {
 	return s.repo.GetHierarchyFolder(ObjectID, profileID, isFolder)
 }
+func (s *ObjectService) ImportObjects(req models.ObjectImportRequest) error {
+	return s.repo.ImportObjects(req)
+}

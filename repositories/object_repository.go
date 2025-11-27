@@ -15,6 +15,15 @@ type ObjectRepository struct {
 	db *sql.DB
 }
 
+func (r *ObjectRepository) ImportObjects(req models.ObjectImportRequest) error {
+	folderID, _ := TransformUUID(req.FolderId)
+	libraryID, _ := TransformUUID(req.LibraryId)
+
+	fmt.Println("transform:", folderID)
+	fmt.Println("transform:", libraryID)
+	panic("unimplemented")
+}
+
 // NewObjectRepository creates a new ObjectRepository
 func NewObjectRepository(db *sql.DB) *ObjectRepository {
 	return &ObjectRepository{db: db}
@@ -670,3 +679,44 @@ func (r *ObjectRepository) GetByObjectTypeIDAndLibraryID(objectTypeID int, libra
 
 	return objects, totalCount, nil
 }
+
+/*
+   select library repository list more efficent
+   SELECT	vwObject.ObjectID,
+        ObjectParentID,
+        ObjectName,
+        ObjectDescription,
+        [CurrentVersionId],
+        LastCheckedInVersionId,
+        IsImported,
+        IsLibrary,
+        LibraryId,
+        [LibraryName],
+        FileExtension,
+        CreatedBy,
+        DateCreated,
+        LastModifiedBy,
+        LastModified,
+        UserVersionNo,
+        SystemVersionNo,
+        IsFirstVersionCheckedOut,
+        [GeneralType],
+        [GeneralTypeName],
+        [TypeId],
+        [TypeName],
+        VisioAlias,
+        HasVisioAlias,
+        IsLocked,
+        CASE
+            WHEN vwObject.ObjectId=dbo.const_GuidEmpty()
+            THEN -1
+            ELSE SortOrder
+        END	AS SortOrder,
+        RichTextDescription,
+		AutoSort
+    FROM	[vwObject]
+    INNER JOIN vwObjectReadPermissions AS perm ON perm.ObjectID = vwObject.ObjectID AND perm.ProfileID = 1
+    WHERE	(IsLibrary = CAST(1 AS BIT) OR vwObject.ObjectId=dbo.const_GuidEmpty())
+    AND		IsDeleted = CAST(0 AS BIT)
+    AND		perm.HasReadPermission = CAST(1 AS BIT)
+    ORDER BY SortOrder,ObjectName */

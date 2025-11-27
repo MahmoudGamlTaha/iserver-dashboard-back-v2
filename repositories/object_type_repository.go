@@ -222,3 +222,115 @@ func (r *ObjectTypeRepository) Delete(id int) error {
 	return nil
 }
 
+func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHierarchy, error) {
+	query := `WITH FolderHierarchy AS (
+				SELECT 
+					ot.ObjectTypeName,
+					fth.FolderTypeHierarchyId,
+					fth.FolderObjectTypeId,
+					fth.ParentHierarchyId,
+					0 as Level,
+					CAST(ot.ObjectTypeName AS NVARCHAR(MAX)) as FullPath
+				FROM FolderTypeHierarchy fth
+				INNER JOIN ObjectType ot ON ot.ObjectTypeID = fth.FolderObjectTypeId
+				WHERE fth.ParentHierarchyId is null
+				
+				UNION ALL
+				
+				SELECT 
+					ot.ObjectTypeName,
+					fth.FolderTypeHierarchyId,
+					fth.FolderObjectTypeId,
+					fth.ParentHierarchyId,
+					fh.Level + 1 as Level,
+					CAST(fh.FullPath + ' > ' + ot.ObjectTypeName AS NVARCHAR(MAX)) as FullPath
+				FROM FolderTypeHierarchy fth
+				INNER JOIN ObjectType ot ON ot.ObjectTypeID = fth.FolderObjectTypeId
+				INNER JOIN FolderHierarchy fh ON fth.ParentHierarchyId = fh.FolderTypeHierarchyId
+			)
+			SELECT 
+			   
+				ObjectTypeName,
+				FolderObjectTypeId as objecTypeId,
+				ParentHierarchyId as objectTypeParentId,
+				FolderTypeHierarchyId as objectTypeHierarchyId,
+				Level,
+				FullPath
+			FROM FolderHierarchy
+			ORDER BY FullPath;
+			`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving folder repository tree: %w", err)
+	}
+	defer rows.Close()
+
+	var folderRepositoryTree []models.ObjectTypeHierarchy
+	for rows.Next() {
+		var objType models.ObjectTypeHierarchy
+		err := rows.Scan(
+			&objType.ObjectTypeName, &objType.ObjectTypeID, &objType.ObjecttypeParentId,
+			&objType.ObjectTypeHierarchyId, &objType.Level, &objType.FullPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning folder repository tree: %w", err)
+		}
+		folderRepositoryTree = append(folderRepositoryTree, objType)
+	}
+
+	return folderRepositoryTree, nil
+}
+
+// SearchByName retrieves object types filtered by name with pagination
+func (r *ObjectTypeRepository) SearchByName(name string, page, pageSize int) ([]models.ObjectType, int, error) {
+	offset := (page - 1) * pageSize
+
+	// Total count with filter
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM ObjectType WHERE ObjectTypeName LIKE '%' + @p1 + '%'`
+	if err := r.db.QueryRow(countQuery, name).Scan(&totalCount); err != nil {
+		return nil, 0, fmt.Errorf("error counting object types by name: %w", err)
+	}
+
+	query := `
+		SELECT ObjectTypeID, ObjectTypeName, ObjectTypeImage, IsTemplateType, GeneralType,
+			TemplateFileName, IsDefaultTemplate, ActiveType, EnforceUniqueNaming, CanHaveVisioAlias,
+			IsConnector, ImplicitlyAddObjectTypes, CommitOverlapRelationships, DateCreated, CreatedBy,
+			DateModified, ModifiedBy, FileExtension, HandlerToolId, Color, Icon,
+			IsExcludedFromBrokenConnectors, Description, ExportShapeAttributes, ExportShapeSystemProperties,
+			ImportShapeAttributes, ExportDocumentAttributes, ExportDocumentSystemProperties,
+			DeleteNotSyncVisioShapeData, DeleteIfHasNoMaster
+		FROM ObjectType
+		WHERE ObjectTypeName LIKE '%' + @p1 + '%'
+		ORDER BY DateCreated DESC
+		OFFSET @p2 ROWS FETCH NEXT @p3 ROWS ONLY
+	`
+
+	rows, err := r.db.Query(query, name, offset, pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error retrieving object types by name: %w", err)
+	}
+	defer rows.Close()
+
+	var objectTypes []models.ObjectType
+	for rows.Next() {
+		var objType models.ObjectType
+		if err := rows.Scan(
+			&objType.ObjectTypeID, &objType.ObjectTypeName, &objType.ObjectTypeImage, &objType.IsTemplateType,
+			&objType.GeneralType, &objType.TemplateFileName, &objType.IsDefaultTemplate, &objType.ActiveType,
+			&objType.EnforceUniqueNaming, &objType.CanHaveVisioAlias, &objType.IsConnector,
+			&objType.ImplicitlyAddObjectTypes, &objType.CommitOverlapRelationships, &objType.DateCreated,
+			&objType.CreatedBy, &objType.DateModified, &objType.ModifiedBy, &objType.FileExtension,
+			&objType.HandlerToolId, &objType.Color, &objType.Icon, &objType.IsExcludedFromBrokenConnectors,
+			&objType.Description, &objType.ExportShapeAttributes, &objType.ExportShapeSystemProperties,
+			&objType.ImportShapeAttributes, &objType.ExportDocumentAttributes, &objType.ExportDocumentSystemProperties,
+			&objType.DeleteNotSyncVisioShapeData, &objType.DeleteIfHasNoMaster,
+		); err != nil {
+			return nil, 0, fmt.Errorf("error scanning object type by name: %w", err)
+		}
+		objectTypes = append(objectTypes, objType)
+	}
+
+	return objectTypes, totalCount, nil
+}

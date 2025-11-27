@@ -69,6 +69,21 @@ func (h *ObjectTypeHandler) GetAllObjectTypes(w http.ResponseWriter, r *http.Req
 	respondWithJSON(w, http.StatusOK, response)
 }
 
+// SearchObjectTypes handles GET /api/object-types/search
+func (h *ObjectTypeHandler) SearchObjectTypes(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+
+	response, err := h.service.SearchObjectTypesByName(name, page, pageSize)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to search object types", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}
+
 // UpdateObjectType handles PUT /api/object-types/{id}
 func (h *ObjectTypeHandler) UpdateObjectType(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -112,3 +127,13 @@ func (h *ObjectTypeHandler) DeleteObjectType(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// GetFolderRepositoryTree handles GET /api/object-types/folder-tree
+func (h *ObjectTypeHandler) GetFolderRepositoryTree(w http.ResponseWriter, r *http.Request) {
+	response, err := h.service.GetFolderRepositoryTree()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve folder repository tree", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}

@@ -61,6 +61,35 @@ func (s *ObjectTypeService) GetAllObjectTypes(page, pageSize int) (*models.Pagin
 	}, nil
 }
 
+// SearchObjectTypesByName retrieves object types filtered by name with pagination
+func (s *ObjectTypeService) SearchObjectTypesByName(name string, page, pageSize int) (*models.PaginatedResponse, error) {
+	// reuse same pagination defaults
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	objectTypes, totalCount, err := s.repo.SearchByName(name, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
+
+	return &models.PaginatedResponse{
+		Data:       objectTypes,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalCount: totalCount,
+		TotalPages: totalPages,
+	}, nil
+}
+
 // UpdateObjectType updates an existing object type
 func (s *ObjectTypeService) UpdateObjectType(id int, req models.UpdateObjectTypeRequest) (*models.ObjectType, error) {
 	// Validate that at least one field is being updated
@@ -76,8 +105,12 @@ func (s *ObjectTypeService) UpdateObjectType(id int, req models.UpdateObjectType
 	return s.repo.Update(id, req)
 }
 
+// GetFolderRepositoryTree retrieves the hierarchy of object types
+func (s *ObjectTypeService) GetFolderRepositoryTree() ([]models.ObjectTypeHierarchy, error) {
+	return s.repo.GetFolderRepositoryTree()
+}
+
 // DeleteObjectType deletes an object type by its ID
 func (s *ObjectTypeService) DeleteObjectType(id int) error {
 	return s.repo.Delete(id)
 }
-

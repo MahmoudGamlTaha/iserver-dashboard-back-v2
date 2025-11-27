@@ -39,6 +39,14 @@ type ObjectType struct {
 	DeleteNotSyncVisioShapeData    bool       `json:"deleteNotSyncVisioShapeData" db:"DeleteNotSyncVisioShapeData"`
 	DeleteIfHasNoMaster            bool       `json:"deleteIfHasNoMaster" db:"DeleteIfHasNoMaster"`
 }
+type ObjectTypeHierarchy struct {
+	ObjectTypeID          int        `json:"objectTypeId" db:"ObjectTypeID"`
+	ObjectTypeName        *string    `json:"objectTypeName,omitempty" db:"ObjectTypeName"`
+	ObjectTypeHierarchyId *uuid.UUID `json:"objectTypeHierarchyId" db:"objectTypeHierarchyId"`
+	ObjecttypeParentId    *uuid.UUID `json:"objectTypeParentId" db:"objectTypeParentId"`
+	Level                 *int       `json:"Level" db:"Level"`
+	FullPath              *string    `json:"FullPath" db:"FullPath"`
+}
 
 // CreateObjectTypeRequest represents the request body for creating a new object type
 type CreateObjectTypeRequest struct {

@@ -610,8 +610,8 @@ func (r *AttributeRepository) GetAttributeAssignments(objectTypeId int, relation
 		if err != nil {
 			return nil, fmt.Errorf("error scanning attribute assignment: %w", err)
 		}
-		assignment.AttributeGroupId, _ = TransformUUID(assignment.AttributeGroupId)
-		assignment.RelationTypeId, _ = TransformUUID(assignment.RelationTypeId)
+		//	assignment.AttributeGroupId, _ = TransformUUID(assignment.AttributeGroupId)
+		//	assignment.RelationTypeId, _ = TransformUUID(assignment.RelationTypeId)
 		assignments = append(assignments, assignment)
 	}
 
@@ -715,6 +715,14 @@ func (r *AttributeRepository) UpdateAttributeValue(attrs []models.AssignedAttrib
 	defer tx.Rollback()
 
 	query := `
+	IF EXISTS (
+		SELECT 1 
+		FROM AttributeValue
+		WHERE AttributeId = @p7
+		AND ObjectId = @p8
+		AND VersionId = @p9
+      )
+		BEGIN
 		UPDATE AttributeValue
 		SET 
 			ValueText =
@@ -739,15 +747,55 @@ func (r *AttributeRepository) UpdateAttributeValue(attrs []models.AssignedAttrib
 			AttributeId = @p7
 			AND ObjectId = @p8
 			AND VersionId = @p9
+	 END
+	 ELSE
+	   BEGIN
+    -- INSERT new
+    INSERT INTO AttributeValue (
+        AttributeId,
+        ObjectId,
+        VersionId,
+        DataType,
+        ValueText,
+        ValueBigInt,
+        ValueFloat,
+        ValueDate,
+        ValueRichText,
+		DateCreated,
+		CreatedBy,
+		DateModified,
+		ModifiedBy
+    )
+    VALUES (
+        @p7,
+        @p8,
+        @p9,
+        @p10,
+        CASE WHEN @p10 = 4 THEN @p1 ELSE NULL END,
+        CASE 
+            WHEN @p10 = 1 THEN @p2
+            WHEN @p10 = 5 THEN CASE WHEN @p3 = 1 THEN 1 ELSE 0 END
+            ELSE NULL
+        END,
+        CASE WHEN @p10 = 3 THEN @p4 ELSE NULL END,
+        CASE WHEN @p10 = 4 THEN @p5 ELSE NULL END,
+        CASE WHEN @p10 = 6 THEN @p6 ELSE NULL END,
+		CURRENT_TIMESTAMP,
+		@p11,
+		CURRENT_TIMESTAMP,
+		@p11
+    );
+END;
 	`
 	fmt.Println("attrs : ", *attrs[0].TextValue)
 	for _, attr := range attrs {
 		// Transform UUIDs
-		attributeID, _ := TransformUUID(attr.AttributeID)
+		attributeID, _ := TransformUUIDToSQLServerV2(attr.AttributeID)
 		objectID, _ := TransformUUID(attr.ObjectId)
 		versionID, _ := TransformUUID(attr.VersionId)
 
 		var boolVal interface{}
+		var attrDataType int
 		if attr.BooleanValue != nil {
 			if *attr.BooleanValue {
 				boolVal = 1
@@ -758,22 +806,27 @@ func (r *AttributeRepository) UpdateAttributeValue(attrs []models.AssignedAttrib
 		var textValue string
 		if attr.TextValue != nil {
 			textValue = *attr.TextValue
+			attrDataType = 4
 		}
 		var richTextValue string
 		if attr.RichTextValue != nil {
 			richTextValue = *attr.RichTextValue
+			attrDataType = 6
 		}
 		var integerValue int64
 		if attr.IntegerValue != nil {
 			integerValue = int64(*attr.IntegerValue)
+			attrDataType = 1
 		}
 		var floatValue float64
 		if attr.FloatValue != nil {
 			floatValue = *attr.FloatValue
+			attrDataType = 3
 		}
 		var dateValue time.Time
 		if attr.DateValue != nil {
 			dateValue = *attr.DateValue
+			attrDataType = 2
 		}
 
 		_, err := tx.Exec(query,
@@ -786,6 +839,8 @@ func (r *AttributeRepository) UpdateAttributeValue(attrs []models.AssignedAttrib
 			attributeID,
 			objectID,
 			versionID,
+			attrDataType,
+			11,
 		)
 
 		if err != nil {

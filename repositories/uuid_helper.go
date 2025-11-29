@@ -76,3 +76,13 @@ func TransformUUID(u uuid.UUID) (uuid.UUID, error) {
 
 	return uuid.FromBytes(b)
 }
+func TransformUUIDToSQLServerV2(u uuid.UUID) (uuid.UUID, error) {
+	// If it's already version 4, return as is
+	b := toSQLServerUUID(u)
+	// Set version to 4 (bits 12–15)
+	//b[6] = (b[6] & 0x0F) | (4 << 4)
+	// Set variant to RFC 4122 (bits 6–7 = 10)
+	//	b[8] = (b[8] & 0x3F) | 0x80
+
+	return uuid.FromBytes(b)
+}

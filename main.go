@@ -37,14 +37,14 @@ func main() {
 	log.Println("Successfully connected to database")
 
 	// Initialize repositories
-	objectRepo := repositories.NewObjectRepository(db)
+
 	objectTypeRepo := repositories.NewObjectTypeRepository(db)
 	profileRepo := repositories.NewProfileRepository(db)
 	objectContentRepo := repositories.NewObjectContentRepository(db)
 	folderRepo := repositories.NewFolderRepository(db)
 	attributeRepo := repositories.NewAttributeRepository(db)
 	reportConfigRepo := repositories.NewReportConfigRepository(db)
-
+	objectRepo := repositories.NewObjectRepository(db, attributeRepo)
 	// Initialize services
 	objectService := services.NewObjectService(objectRepo)
 	objectTypeService := services.NewObjectTypeService(objectTypeRepo)

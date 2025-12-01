@@ -285,7 +285,7 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 // SearchByName retrieves object types filtered by name with pagination
 func (r *ObjectTypeRepository) SearchByName(name string, page, pageSize int) ([]models.ObjectType, int, error) {
 	offset := (page - 1) * pageSize
-
+    
 	// Total count with filter
 	var totalCount int
 	countQuery := `SELECT COUNT(*) FROM ObjectType WHERE ObjectTypeName LIKE '%' + @p1 + '%'`

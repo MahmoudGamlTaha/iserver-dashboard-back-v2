@@ -4,29 +4,152 @@ import (
 	"database/sql"
 	"enterprise-architect-api/models"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/google/uuid"
 )
 
 // ObjectRepository handles database operations for objects
 type ObjectRepository struct {
-	db *sql.DB
-}
-
-func (r *ObjectRepository) ImportObjects(req models.ObjectImportRequest) error {
-	folderID, _ := TransformUUID(req.FolderId)
-	libraryID, _ := TransformUUID(req.LibraryId)
-
-	fmt.Println("transform:", folderID)
-	fmt.Println("transform:", libraryID)
-	panic("unimplemented")
+	db                  *sql.DB
+	attributeRepository *AttributeRepository
 }
 
 // NewObjectRepository creates a new ObjectRepository
-func NewObjectRepository(db *sql.DB) *ObjectRepository {
-	return &ObjectRepository{db: db}
+func NewObjectRepository(db *sql.DB, attrRepo *AttributeRepository) *ObjectRepository {
+	return &ObjectRepository{db: db, attributeRepository: attrRepo}
+}
+
+func (r *ObjectRepository) ImportObjects(req models.ObjectImportRequest) (*models.ObjectImportResponse, error) {
+	folderID, _ := TransformUUID(req.FolderId)
+	libraryID, _ := TransformUUID(req.LibraryId)
+
+	fmt.Println("transform: folder id", folderID)
+	fmt.Println("transform: library id", libraryID)
+	//checks
+	sql := `
+	  SELECT ObjectTypeId,LibraryId 
+	  FROM Object WHERE ObjectID = @p1
+	`
+	var objectTypeId *int64
+	var libraryId uuid.UUID
+	err := r.db.QueryRow(sql, folderID).Scan(
+		&objectTypeId,
+		&libraryId,
+	)
+	sql = `usp_InsertNewVersionForExistingObject`
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	sql = `
+		INSERT INTO [Object] (
+			ObjectID, ObjectName, ObjectDescription, ObjectTypeID, Locked, IsImported, 
+			IsLibrary, LibraryId, FileExtension, Prefix, Suffix, DateCreated, CreatedBy, 
+			DateModified, ModifiedBy, IsCheckedOut, ExactObjectTypeID, RichTextDescription,GeneralType,HasVisioAlias
+		) OUTPUT INSERTED.ObjectID VALUES (
+			NEWID(), @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18,@p19
+		)`
+	var objectName string
+	var description string
+	var objectId uuid.UUID
+	var insertedObjectCount int
+	insertedObjectCount = 0
+	var insertedFailedObjectCount int
+	insertedFailedObjectCount = 0
+	var attrs []models.AssignedAttribute
+	tx, _ := r.db.Begin()
+	for _, data := range req.Data {
+		var row models.AssignedAttribute
+		for key, entry := range data {
+			if key == "Object Name" {
+				objectName = *entry.AttributeValue
+			}
+			if key == "Description" {
+				description = *entry.AttributeValue
+			}
+			if key != "Object Name" && key != "Description" {
+				var attrUUID, _ = uuid.Parse(*entry.AttributeId)
+				fmt.Print("attribute_id", attrUUID)
+				row.AttributeID = attrUUID
+				row.AttributeName = *entry.AttributeName
+				row.AttributeType = row.AttributeType
+				if r.GetTypeId(row.AttributeType) == 4 {
+					row.TextValue = *&entry.AttributeValue
+				}
+				if r.GetTypeId(row.AttributeType) == 1 {
+					if entry.AttributeValue != nil {
+						val, err := strconv.Atoi(*entry.AttributeValue)
+						if err == nil {
+							row.IntegerValue = &val
+						}
+					}
+				}
+
+			}
+			if objectName == "" {
+				insertedFailedObjectCount++
+				continue
+			}
+			err = tx.QueryRow(sql, objectName, description, r.GetTypeId("string"), 0, 1, 0, libraryID, "", nil, nil,
+				time.Now(), 62, time.Now(), 62, 0,
+				req.ObjectTypeId, r.toRTFUnicode(description), r.GetTypeId("string"), 0).Scan(&objectId)
+
+			if err != nil {
+				insertedFailedObjectCount++
+				fmt.Println("error insert Object", err)
+				continue
+			}
+			row.ObjectId = objectId
+			fmt.Print("row data", row)
+			if row.AttributeID != uuid.Nil {
+				attrs = append(attrs, row)
+			}
+			insertedObjectCount++
+		}
+
+	}
+	err = r.attributeRepository.UpdateAttributeValue(attrs)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	tx.Commit()
+	var response models.ObjectImportResponse
+	response.Success = true
+	response.FailedImportObjectCount = insertedFailedObjectCount
+	response.SuccessImportedObjectCount = insertedObjectCount
+	response.TotalImportedObjectCount = insertedFailedObjectCount + insertedObjectCount
+	return &response, nil
+}
+func (r *ObjectRepository) GetTypeId(attributeType string) int64 {
+	switch strings.ToLower(attributeType) {
+	case "string":
+		return 4
+	case "integer":
+		return 1
+	case "float":
+		return 3
+	case "boolean":
+		return 5
+	case "date":
+		return 2
+	case "richtext":
+		return 6
+	default:
+		return 4
+	}
+}
+func (r *ObjectRepository) toRTFUnicode(s string) string {
+	rtf := ""
+	for _, r := range s {
+		rtf += fmt.Sprintf("\\u%d?", r)
+	}
+	return rtf
 }
 
 // Create creates a new object in the database

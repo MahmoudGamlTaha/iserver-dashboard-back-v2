@@ -73,14 +73,21 @@ type UpdateObjectRequest struct {
 }
 
 type ObjectImportRequest struct {
-	LibraryId    uuid.UUID                `json:"libraryId"`
-	FolderId     uuid.UUID                `json:"folderId"`
-	ObjectTypeId int                      `json:"objectTypeId"`
-	Data         []map[string]interface{} `json:"data"`
+	LibraryId    uuid.UUID                    `json:"libraryId"`
+	FolderId     uuid.UUID                    `json:"folderId"`
+	ObjectTypeId int                          `json:"objectTypeId"`
+	Data         []map[string]ObjectImportRow `json:"data"`
+	Mappings     []interface{}                `json:"mappings"`
+}
+type ObjectImportResponse struct {
+	General
+	SuccessImportedObjectCount int `json:"successImportedObjectCount"`
+	FailedImportObjectCount    int `json:"failedImportObjectCount"`
+	TotalImportedObjectCount   int `json:"totalImportedObjectCount"`
 }
 type ObjectImportRow struct {
-	AttributeId    *uuid.UUID `json:"attributeId"`
-	AttributeValue *string    `json:"attributeValue"`
-	AttributeType  *string    `json:"attributeType"`
-	AttributeName  *string    `json:"attributeName"`
+	AttributeId    *string `json:"attributeId"`
+	AttributeValue *string `json:"value"`
+	AttributeType  *string `json:"attributeType"`
+	AttributeName  *string `json:"attributeName"`
 }

@@ -787,7 +787,7 @@ func (r *AttributeRepository) UpdateAttributeValue(attrs []models.AssignedAttrib
     );
 END;
 	`
-	fmt.Println("attrs : ", *attrs[0].TextValue)
+	fmt.Println("attrs : ", attrs[0].TextValue)
 	for _, attr := range attrs {
 		// Transform UUIDs
 		attributeID, _ := TransformUUIDToSQLServerV2(attr.AttributeID)
@@ -840,7 +840,7 @@ END;
 			objectID,
 			versionID,
 			attrDataType,
-			11,
+			62,
 		)
 
 		if err != nil {

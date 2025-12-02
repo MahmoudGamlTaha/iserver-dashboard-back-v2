@@ -137,3 +137,23 @@ func (h *ObjectTypeHandler) GetFolderRepositoryTree(w http.ResponseWriter, r *ht
 
 	respondWithJSON(w, http.StatusOK, response)
 }
+
+// AddFolderToTree handles POST /api/object-types/folder-tree
+func (h *ObjectTypeHandler) AddFolderToTree(w http.ResponseWriter, r *http.Request) {
+	var req models.AddFolderToTreeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
+		return
+	}
+
+	folderTypeHierarchyId, err := h.service.AddFolderToTree(req)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to add folder to tree", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, map[string]interface{}{
+		"message":               "Folder added to tree successfully",
+		"folderTypeHierarchyId": folderTypeHierarchyId,
+	})
+}

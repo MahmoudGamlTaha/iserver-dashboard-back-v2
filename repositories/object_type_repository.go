@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ObjectTypeRepository handles database operations for object types
@@ -282,10 +284,103 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 	return folderRepositoryTree, nil
 }
 
+// AddFolderToTree adds a new folder to the folder hierarchy tree
+func (r *ObjectTypeRepository) AddFolderToTree(req models.AddFolderToTreeRequest) (*uuid.UUID, error) {
+	var folderObjectTypeId int
+	var err error
+
+	// If FolderObjectTypeId is 0, create a new ObjectType
+	if req.FolderObjectTypeId == 0 {
+		// Validate that ObjectTypeName is provided
+		if req.ObjectTypeName == "" {
+			return nil, fmt.Errorf("object type name is required when creating a new object type")
+		}
+
+		// Insert new ObjectType
+		insertObjectTypeQuery := `
+			INSERT INTO ObjectType (
+				ObjectTypeName, IsTemplateType, IsDefaultTemplate, ActiveType, 
+				EnforceUniqueNaming, CanHaveVisioAlias, IsConnector, ImplicitlyAddObjectTypes, 
+				CommitOverlapRelationships, DateCreated, CreatedBy, DateModified, ModifiedBy, 
+				IsExcludedFromBrokenConnectors, ExportShapeAttributes, 
+				ExportShapeSystemProperties, ImportShapeAttributes, ExportDocumentAttributes, 
+				ExportDocumentSystemProperties, DeleteNotSyncVisioShapeData, DeleteIfHasNoMaster,GeneralType
+			) OUTPUT INSERTED.ObjectTypeID VALUES (
+				@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20, @p21,@p22
+			)
+		`
+
+		now := time.Now()
+		err := r.db.QueryRow(insertObjectTypeQuery,
+			req.ObjectTypeName, false, false, true,
+			true, false, false, false,
+			false, now, 62, now, 62,
+			false, false,
+			false, false, false,
+			false, false, false,
+			2, // fixed for folder type
+		).Scan(&folderObjectTypeId)
+
+		if err != nil {
+			return nil, fmt.Errorf("error creating new object type: %w", err)
+		}
+	} else {
+		// Validate that the FolderObjectTypeId exists
+		var exists bool
+		checkQuery := `SELECT CASE WHEN EXISTS (SELECT 1 FROM ObjectType WHERE ObjectTypeID = @p1) THEN 1 ELSE 0 END`
+		err := r.db.QueryRow(checkQuery, req.FolderObjectTypeId).Scan(&exists)
+		if err != nil {
+			return nil, fmt.Errorf("error checking if object type exists: %w", err)
+		}
+		if !exists {
+			return nil, fmt.Errorf("object type with ID %d does not exist", req.FolderObjectTypeId)
+		}
+		folderObjectTypeId = req.FolderObjectTypeId
+	}
+	var parentHierarchyId uuid.UUID
+	parentHierarchyId, err = TransformUUID(*req.ParentHierarchyId)
+	if err != nil {
+		return nil, fmt.Errorf("error transforming parent hierarchy ID: %w", err)
+	}
+
+	// If ParentHierarchyId is provided, validate it exists
+	if req.ParentHierarchyId != nil {
+		var parentExists bool
+		checkParentQuery := `SELECT CASE WHEN EXISTS (SELECT 1 FROM FolderTypeHierarchy WHERE FolderTypeHierarchyId = @p1) THEN 1 ELSE 0 END`
+		err = r.db.QueryRow(checkParentQuery, parentHierarchyId).Scan(&parentExists)
+		if err != nil {
+			return nil, fmt.Errorf("error checking if parent hierarchy exists: %w", err)
+		}
+		if !parentExists {
+			return nil, fmt.Errorf("parent hierarchy with ID %s does not exist", parentHierarchyId.String())
+		}
+	}
+
+	// Insert new folder into hierarchy
+	insertQuery := `
+		INSERT INTO FolderTypeHierarchy (
+			FolderTypeHierarchyId, 
+			FolderObjectTypeId, 
+			ParentHierarchyId
+		) OUTPUT INSERTED.FolderTypeHierarchyId 
+		VALUES (NEWID(), @p1, @p2)
+	`
+
+	var folderTypeHierarchyId uuid.UUID
+
+	fmt.Println("Parent Hierarchy ID: ", parentHierarchyId)
+	err = r.db.QueryRow(insertQuery, folderObjectTypeId, parentHierarchyId).Scan(&folderTypeHierarchyId)
+	if err != nil {
+		return nil, fmt.Errorf("error adding folder to tree: %w", err)
+	}
+
+	return &folderTypeHierarchyId, nil
+}
+
 // SearchByName retrieves object types filtered by name with pagination
 func (r *ObjectTypeRepository) SearchByName(name string, page, pageSize int) ([]models.ObjectType, int, error) {
 	offset := (page - 1) * pageSize
-    
+
 	// Total count with filter
 	var totalCount int
 	countQuery := `SELECT COUNT(*) FROM ObjectType WHERE ObjectTypeName LIKE '%' + @p1 + '%'`

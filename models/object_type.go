@@ -70,3 +70,10 @@ type UpdateObjectTypeRequest struct {
 	ActiveType     *bool   `json:"activeType,omitempty"`
 	ModifiedBy     int     `json:"modifiedBy" validate:"required"`
 }
+
+// AddFolderToTreeRequest represents the request body for adding a folder to the hierarchy tree
+type AddFolderToTreeRequest struct {
+	FolderObjectTypeId int        `json:"folderObjectTypeId"`
+	ObjectTypeName     string     `json:"objectTypeName,omitempty"`
+	ParentHierarchyId  *uuid.UUID `json:"parentHierarchyId,omitempty"`
+}

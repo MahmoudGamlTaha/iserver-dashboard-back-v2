@@ -5,6 +5,8 @@ import (
 	"enterprise-architect-api/repositories"
 	"fmt"
 	"math"
+
+	"github.com/google/uuid"
 )
 
 // ObjectTypeService handles business logic for object types
@@ -108,6 +110,16 @@ func (s *ObjectTypeService) UpdateObjectType(id int, req models.UpdateObjectType
 // GetFolderRepositoryTree retrieves the hierarchy of object types
 func (s *ObjectTypeService) GetFolderRepositoryTree() ([]models.ObjectTypeHierarchy, error) {
 	return s.repo.GetFolderRepositoryTree()
+}
+
+// AddFolderToTree adds a new folder to the folder hierarchy tree
+func (s *ObjectTypeService) AddFolderToTree(req models.AddFolderToTreeRequest) (*uuid.UUID, error) {
+	// Validate: if FolderObjectTypeId is 0, ObjectTypeName must be provided
+	if req.FolderObjectTypeId == 0 && req.ObjectTypeName == "" {
+		return nil, fmt.Errorf("object type name is required when creating a new object type")
+	}
+
+	return s.repo.AddFolderToTree(req)
 }
 
 // DeleteObjectType deletes an object type by its ID

@@ -85,6 +85,7 @@ func main() {
 
 	// ObjectType routes
 	api.HandleFunc("/object-types/folder-tree", objectTypeHandler.GetFolderRepositoryTree).Methods("GET")
+	api.HandleFunc("/object-types/folder-tree", objectTypeHandler.AddFolderToTree).Methods("POST")
 	api.HandleFunc("/object-types/search", objectTypeHandler.SearchObjectTypes).Methods("GET")
 	api.HandleFunc("/object-types", objectTypeHandler.GetAllObjectTypes).Methods("GET")
 	api.HandleFunc("/object-types", objectTypeHandler.CreateObjectType).Methods("POST")

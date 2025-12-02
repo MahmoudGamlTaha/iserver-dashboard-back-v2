@@ -30,23 +30,50 @@ func (r *ObjectRepository) ImportObjects(req models.ObjectImportRequest) (*model
 	fmt.Println("transform: folder id", folderID)
 	fmt.Println("transform: library id", libraryID)
 	//checks
-	sql := `
+	checkFolderSql := `
 	  SELECT ObjectTypeId,LibraryId 
 	  FROM Object WHERE ObjectID = @p1
 	`
 	var objectTypeId *int64
 	var libraryId uuid.UUID
-	err := r.db.QueryRow(sql, folderID).Scan(
+	err := r.db.QueryRow(checkFolderSql, folderID).Scan(
 		&objectTypeId,
 		&libraryId,
 	)
-	sql = `usp_InsertNewVersionForExistingObject`
+	fmt.Println("transform: library id after", libraryID)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
-	sql = `
+	// Check if object exists query
+	checkExistsSql := `
+		SELECT ObjectID FROM [Object] 
+		WHERE ObjectName = @p1 AND ExactObjectTypeID = @p2 and libraryid = @p3
+	`
+
+	// Update existing object query
+	updateSql := `
+		UPDATE [Object] SET 
+			ObjectDescription = @p1, 
+			ObjectTypeID = @p2, 
+			Locked = @p3, 
+			IsImported = @p4, 
+			IsLibrary = @p5, 
+			LibraryId = @p6, 
+			FileExtension = @p7, 
+			Prefix = @p8, 
+			Suffix = @p9, 
+			DateModified = @p10, 
+			ModifiedBy = @p11, 
+			RichTextDescription = @p12, 
+			GeneralType = @p13, 
+			HasVisioAlias = @p14
+		WHERE ObjectID = @p15
+	`
+
+	// Insert new object query
+	insertSql := `
 		INSERT INTO [Object] (
 			ObjectID, ObjectName, ObjectDescription, ObjectTypeID, Locked, IsImported, 
 			IsLibrary, LibraryId, FileExtension, Prefix, Suffix, DateCreated, CreatedBy, 
@@ -54,12 +81,13 @@ func (r *ObjectRepository) ImportObjects(req models.ObjectImportRequest) (*model
 		) OUTPUT INSERTED.ObjectID VALUES (
 			NEWID(), @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18,@p19
 		)`
+
 	var objectName string
 	var description string
 	var objectId uuid.UUID
-	var insertedObjectCount int
+	var insertedObjectCount, insertedFailedObjectCount int
 	insertedObjectCount = 0
-	var insertedFailedObjectCount int
+
 	insertedFailedObjectCount = 0
 	var attrs []models.AssignedAttribute
 	tx, _ := r.db.Begin()
@@ -95,15 +123,39 @@ func (r *ObjectRepository) ImportObjects(req models.ObjectImportRequest) (*model
 				insertedFailedObjectCount++
 				continue
 			}
-			err = tx.QueryRow(sql, objectName, description, r.GetTypeId("string"), 0, 1, 0, libraryID, "", nil, nil,
-				time.Now(), 62, time.Now(), 62, 0,
-				req.ObjectTypeId, r.toRTFUnicode(description), r.GetTypeId("string"), 0).Scan(&objectId)
+			// Check if object exists with the same ObjectName and ExactObjectTypeID
+			var existingObjectId uuid.UUID
+			err = tx.QueryRow(checkExistsSql, objectName, req.ObjectTypeId, libraryID).Scan(&existingObjectId)
 
-			if err != nil {
+			if err == sql.ErrNoRows {
+				// Object doesn't exist, insert new one
+				err = tx.QueryRow(insertSql, objectName, description, r.GetTypeId("string"), 0, 1, 0, libraryID, "", nil, nil,
+					time.Now(), 62, time.Now(), 62, 0,
+					req.ObjectTypeId, r.toRTFUnicode(description), r.GetTypeId("string"), 0).Scan(&objectId)
+
+				if err != nil {
+					insertedFailedObjectCount++
+					fmt.Println("error insert Object", err)
+					continue
+				}
+			} else if err != nil {
+				// Error checking for existence
 				insertedFailedObjectCount++
-				fmt.Println("error insert Object", err)
+				fmt.Println("error checking object existence", err)
 				continue
+			} else {
+				// Object exists, update it
+				_, err = tx.Exec(updateSql, description, r.GetTypeId("string"), 0, 1, 0, libraryID, "", nil, nil,
+					time.Now(), 62, r.toRTFUnicode(description), r.GetTypeId("string"), 0, existingObjectId)
+
+				if err != nil {
+					insertedFailedObjectCount++
+					fmt.Println("error updating Object", err)
+					continue
+				}
+				objectId = existingObjectId
 			}
+
 			row.ObjectId = objectId
 			fmt.Print("row data", row)
 			if row.AttributeID != uuid.Nil {

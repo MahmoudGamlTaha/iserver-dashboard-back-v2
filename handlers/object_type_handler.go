@@ -157,3 +157,64 @@ func (h *ObjectTypeHandler) AddFolderToTree(w http.ResponseWriter, r *http.Reque
 		"folderTypeHierarchyId": folderTypeHierarchyId,
 	})
 }
+
+// AssignObjectTypeToFolder handles POST /api/object-types/folder-assignments
+func (h *ObjectTypeHandler) AssignObjectTypeToFolder(w http.ResponseWriter, r *http.Request) {
+	var req models.FolderObjectTypes
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
+		return
+	}
+
+	if err := h.service.AssignObjectTypeToFolder(req); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to assign object type to folder", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, models.SuccessResponse{
+		Message: "Object type assigned to folder successfully",
+	})
+}
+
+// GetAvailableTypesForFolder handles GET /api/object-types/folder-assignments/{folderObjectTypeId}
+func (h *ObjectTypeHandler) GetAvailableTypesForFolder(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	folderObjectTypeId, err := strconv.Atoi(vars["folderObjectTypeId"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid folder object type ID", err.Error())
+		return
+	}
+
+	folderObjectTypes, err := h.service.GetAvailableTypesForFolder(folderObjectTypeId)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve available types for folder", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, folderObjectTypes)
+}
+
+// DeleteObjectTypeFromFolder handles DELETE /api/object-types/folder-assignments/{folderObjectTypeId}/{objectTypeId}
+func (h *ObjectTypeHandler) DeleteObjectTypeFromFolder(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	folderObjectTypeId, err := strconv.Atoi(vars["folderObjectTypeId"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid folder object type ID", err.Error())
+		return
+	}
+
+	objectTypeId, err := strconv.Atoi(vars["objectTypeId"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid object type ID", err.Error())
+		return
+	}
+
+	if err := h.service.DeleteObjectTypeFromFolder(folderObjectTypeId, objectTypeId); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to delete object type from folder", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, models.SuccessResponse{
+		Message: "Object type removed from folder successfully",
+	})
+}

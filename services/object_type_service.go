@@ -126,3 +126,37 @@ func (s *ObjectTypeService) AddFolderToTree(req models.AddFolderToTreeRequest) (
 func (s *ObjectTypeService) DeleteObjectType(id int) error {
 	return s.repo.Delete(id)
 }
+
+// AssignObjectTypeToFolder assigns an object type to a folder type
+func (s *ObjectTypeService) AssignObjectTypeToFolder(req models.FolderObjectTypes) error {
+	// Validate required fields
+	if req.FolderObjectTypeId == 0 {
+		return fmt.Errorf("folder object type ID is required")
+	}
+	if req.ObjectTypeID == 0 {
+		return fmt.Errorf("object type ID is required")
+	}
+
+	return s.repo.AssignObjectTypeToFolder(req)
+}
+
+// GetAvailableTypesForFolder retrieves available object types for a specific folder
+func (s *ObjectTypeService) GetAvailableTypesForFolder(folderObjectTypeId int) ([]models.FolderObjectTypesNames, error) {
+	if folderObjectTypeId == 0 {
+		return nil, fmt.Errorf("folder object type ID is required")
+	}
+
+	return s.repo.GetAvailableTypesForFolder(folderObjectTypeId)
+}
+
+// DeleteObjectTypeFromFolder removes an object type assignment from a folder
+func (s *ObjectTypeService) DeleteObjectTypeFromFolder(folderObjectTypeId, objectTypeId int) error {
+	if folderObjectTypeId == 0 {
+		return fmt.Errorf("folder object type ID is required")
+	}
+	if objectTypeId == 0 {
+		return fmt.Errorf("object type ID is required")
+	}
+
+	return s.repo.DeleteObjectTypeFromFolder(folderObjectTypeId, objectTypeId)
+}

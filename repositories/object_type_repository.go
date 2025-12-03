@@ -228,6 +228,7 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 	query := `WITH FolderHierarchy AS (
 				SELECT 
 					ot.ObjectTypeName,
+					ot.ObjectTypeID,
 					fth.FolderTypeHierarchyId,
 					fth.FolderObjectTypeId,
 					fth.ParentHierarchyId,
@@ -241,6 +242,7 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 				
 				SELECT 
 					ot.ObjectTypeName,
+					ot.ObjectTypeID,
 					fth.FolderTypeHierarchyId,
 					fth.FolderObjectTypeId,
 					fth.ParentHierarchyId,
@@ -253,7 +255,8 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 			SELECT 
 			   
 				ObjectTypeName,
-				FolderObjectTypeId as objecTypeId,
+				ObjectTypeID,
+				FolderObjectTypeId as objectTypeFolderId,
 				ParentHierarchyId as objectTypeParentId,
 				FolderTypeHierarchyId as objectTypeHierarchyId,
 				Level,
@@ -272,7 +275,7 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 	for rows.Next() {
 		var objType models.ObjectTypeHierarchy
 		err := rows.Scan(
-			&objType.ObjectTypeName, &objType.ObjectTypeID, &objType.ObjecttypeParentId,
+			&objType.ObjectTypeName, &objType.ObjectTypeId, &objType.ObjectTypeFolderId, &objType.ObjectTypeParentId,
 			&objType.ObjectTypeHierarchyId, &objType.Level, &objType.FullPath,
 		)
 		if err != nil {
@@ -375,6 +378,81 @@ func (r *ObjectTypeRepository) AddFolderToTree(req models.AddFolderToTreeRequest
 	}
 
 	return &folderTypeHierarchyId, nil
+}
+
+// AssignObjectTypeToFolder assigns an object type to a folder type
+func (r *ObjectTypeRepository) AssignObjectTypeToFolder(req models.FolderObjectTypes) error {
+	query := `
+		INSERT INTO FolderObjectTypes (
+			FolderObjectTypeId, 
+			ObjectTypeId, 
+			IsDocumentType
+		) VALUES (@p1, @p2, @p3)
+	`
+
+	_, err := r.db.Exec(query, req.FolderObjectTypeId, req.ObjectTypeID, req.IsDocumentType)
+	if err != nil {
+		return fmt.Errorf("error assigning object type to folder: %w", err)
+	}
+
+	return nil
+}
+
+// GetAvailableTypesForFolder retrieves available object types for a specific folder
+func (r *ObjectTypeRepository) GetAvailableTypesForFolder(folderObjectTypeId int) ([]models.FolderObjectTypesNames, error) {
+	query := `
+		SELECT ot.ObjectTypeName, fo.FolderObjectTypeId, fo.ObjectTypeId, fo.IsDocumentType 
+		FROM FolderObjectTypes fo 
+		INNER JOIN ObjectType ot ON fo.ObjectTypeId = ot.ObjectTypeID
+		WHERE FolderObjectTypeId = @p1
+	`
+
+	rows, err := r.db.Query(query, folderObjectTypeId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving available types for folder: %w", err)
+	}
+	defer rows.Close()
+
+	var folderObjectTypes []models.FolderObjectTypesNames
+	for rows.Next() {
+		var fot models.FolderObjectTypesNames
+		err := rows.Scan(
+			&fot.ObjectTypeName,
+			&fot.FolderObjectTypeId,
+			&fot.ObjectTypeID,
+			&fot.IsDocumentType,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning folder object type: %w", err)
+		}
+		folderObjectTypes = append(folderObjectTypes, fot)
+	}
+
+	return folderObjectTypes, nil
+}
+
+// DeleteObjectTypeFromFolder removes an object type assignment from a folder
+func (r *ObjectTypeRepository) DeleteObjectTypeFromFolder(folderObjectTypeId, objectTypeId int) error {
+	query := `
+		DELETE FROM FolderObjectTypes 
+		WHERE FolderObjectTypeId = @p1 AND ObjectTypeId = @p2
+	`
+
+	result, err := r.db.Exec(query, folderObjectTypeId, objectTypeId)
+	if err != nil {
+		return fmt.Errorf("error deleting object type from folder: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error getting rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("object type assignment not found")
+	}
+
+	return nil
 }
 
 // SearchByName retrieves object types filtered by name with pagination

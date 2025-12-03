@@ -40,10 +40,11 @@ type ObjectType struct {
 	DeleteIfHasNoMaster            bool       `json:"deleteIfHasNoMaster" db:"DeleteIfHasNoMaster"`
 }
 type ObjectTypeHierarchy struct {
-	ObjectTypeID          int        `json:"objectTypeId" db:"ObjectTypeID"`
+	ObjectTypeFolderId    int        `json:"objectTypeFolderId" db:"ObjectTypeFolderId"`
+	ObjectTypeId          int        `json:"objectTypeId" db:"ObjectTypeId"`
 	ObjectTypeName        *string    `json:"objectTypeName,omitempty" db:"ObjectTypeName"`
 	ObjectTypeHierarchyId *uuid.UUID `json:"objectTypeHierarchyId" db:"objectTypeHierarchyId"`
-	ObjecttypeParentId    *uuid.UUID `json:"objectTypeParentId" db:"objectTypeParentId"`
+	ObjectTypeParentId    *uuid.UUID `json:"objectTypeParentId" db:"objectTypeParentId"`
 	Level                 *int       `json:"Level" db:"Level"`
 	FullPath              *string    `json:"FullPath" db:"FullPath"`
 }
@@ -76,4 +77,16 @@ type AddFolderToTreeRequest struct {
 	FolderObjectTypeId int        `json:"folderObjectTypeId"`
 	ObjectTypeName     string     `json:"objectTypeName,omitempty"`
 	ParentHierarchyId  *uuid.UUID `json:"parentHierarchyId,omitempty"`
+}
+
+type FolderObjectTypes struct {
+	ObjectTypeID       int  `json:"objectTypeId"`
+	FolderObjectTypeId int  `json:"folderObjectTypeId"`
+	IsDocumentType     bool `json:"isDocumentType"`
+}
+type FolderObjectTypesNames struct {
+	ObjectTypeID       int    `json:"objectTypeId"`
+	FolderObjectTypeId int    `json:"folderObjectTypeId"`
+	IsDocumentType     bool   `json:"isDocumentType"`
+	ObjectTypeName     string `json:"objectTypeName"`
 }

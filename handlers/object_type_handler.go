@@ -194,6 +194,23 @@ func (h *ObjectTypeHandler) GetAvailableTypesForFolder(w http.ResponseWriter, r 
 	respondWithJSON(w, http.StatusOK, folderObjectTypes)
 }
 
+func (h *ObjectTypeHandler) GetAvailableTypesForLibsAndFolders(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	folderObjectTypeId, err := strconv.Atoi(vars["folderObjectTypeId"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid folder object type ID", err.Error())
+		return
+	}
+
+	folderObjectTypes, err := h.service.GetAvailableTypesForLibsAndFolder(folderObjectTypeId)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve available types for folder", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, folderObjectTypes)
+}
+
 // DeleteObjectTypeFromFolder handles DELETE /api/object-types/folder-assignments/{folderObjectTypeId}/{objectTypeId}
 func (h *ObjectTypeHandler) DeleteObjectTypeFromFolder(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -217,4 +234,14 @@ func (h *ObjectTypeHandler) DeleteObjectTypeFromFolder(w http.ResponseWriter, r 
 	respondWithJSON(w, http.StatusOK, models.SuccessResponse{
 		Message: "Object type removed from folder successfully",
 	})
+}
+
+func (h *ObjectTypeHandler) GetBaseLibrary(w http.ResponseWriter, r *http.Request) {
+	response, err := h.service.GetBaseLibrary()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve folder repository tree", err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
 }

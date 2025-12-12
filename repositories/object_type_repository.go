@@ -254,15 +254,20 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 			)
 			SELECT 
 			   
-				ObjectTypeName,
-				ObjectTypeID,
-				FolderObjectTypeId as objectTypeFolderId,
-				ParentHierarchyId as objectTypeParentId,
-				FolderTypeHierarchyId as objectTypeHierarchyId,
-				Level,
-				FullPath
-			FROM FolderHierarchy
-			ORDER BY FullPath;
+				fh.ObjectTypeName,
+				fh.ObjectTypeID,
+				fh.FolderObjectTypeId as objectTypeFolderId,
+				fh.ParentHierarchyId as objectTypeParentId,
+				fh.FolderTypeHierarchyId as objectTypeHierarchyId,
+				fh.Level,
+				fh.FullPath,
+				CAST(CASE WHEN EXISTS (
+					SELECT 1 FROM FolderObjectTypes fot 
+					WHERE fot.FolderObjectTypeId = fh.FolderObjectTypeId 
+					AND fot.IsDocumentType = 1
+				) THEN 1 ELSE 0 END AS BIT) as IsDocumentType
+			FROM FolderHierarchy fh
+			ORDER BY fh.FullPath;
 			`
 
 	rows, err := r.db.Query(query)
@@ -276,7 +281,7 @@ func (r *ObjectTypeRepository) GetFolderRepositoryTree() ([]models.ObjectTypeHie
 		var objType models.ObjectTypeHierarchy
 		err := rows.Scan(
 			&objType.ObjectTypeName, &objType.ObjectTypeId, &objType.ObjectTypeFolderId, &objType.ObjectTypeParentId,
-			&objType.ObjectTypeHierarchyId, &objType.Level, &objType.FullPath,
+			&objType.ObjectTypeHierarchyId, &objType.Level, &objType.FullPath, &objType.IsDocumentType,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning folder repository tree: %w", err)
@@ -506,4 +511,118 @@ func (r *ObjectTypeRepository) SearchByName(name string, page, pageSize int) ([]
 	}
 
 	return objectTypes, totalCount, nil
+}
+
+// GetBaseLibrary retrieves the base library of object types
+func (r *ObjectTypeRepository) GetBaseLibrary() ([]models.ObjectTypeHierarchy, error) {
+	sql := `SELECT 
+					ot.ObjectTypeName,
+					fth.FolderTypeHierarchyId AS ObjectTypeHierarchyId,
+					fth.FolderObjectTypeId AS ObjectTypeId
+				FROM FolderTypeHierarchy fth
+				INNER JOIN ObjectType ot ON ot.ObjectTypeID = fth.FolderObjectTypeId
+				WHERE fth.ParentHierarchyId is null`
+
+	var baseLib models.ObjectTypeHierarchy
+
+	err := r.db.QueryRow(sql).Scan(&baseLib.ObjectTypeName, &baseLib.ObjectTypeHierarchyId, &baseLib.ObjectTypeId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving base library: %w", err)
+	}
+
+	var baseLibraryList []models.ObjectTypeHierarchy
+
+	sql = `SELECT 
+					ot.ObjectTypeName,
+					fth.FolderTypeHierarchyId AS ObjectTypeHierarchyId,
+					fth.FolderObjectTypeId AS ObjectTypeId
+					FROM FolderTypeHierarchy fth
+					INNER JOIN ObjectType ot ON ot.ObjectTypeID = fth.FolderObjectTypeId
+					WHERE fth.ParentHierarchyId = @p1`
+	fmt.Println("Base Library ID: ", baseLib.ObjectTypeHierarchyId)
+	if baseLib.ObjectTypeHierarchyId != nil {
+		transformedUUID, _ := TransformUUID(*baseLib.ObjectTypeHierarchyId)
+		baseLib.ObjectTypeHierarchyId = &transformedUUID
+	}
+	rows, err := r.db.Query(sql, baseLib.ObjectTypeHierarchyId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving base library: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var baseLib models.ObjectTypeHierarchy
+		if err := rows.Scan(&baseLib.ObjectTypeName, &baseLib.ObjectTypeHierarchyId, &baseLib.ObjectTypeId); err != nil {
+			return nil, fmt.Errorf("error scanning base library: %w", err)
+		}
+		baseLibraryList = append(baseLibraryList, baseLib)
+	}
+
+	return baseLibraryList, nil
+}
+func (r *ObjectTypeRepository) GetAvailableTypesForLibsAndFolder(folderObjectTypeId int) ([]models.FolderObjectTypesNames, error) {
+
+	query := `
+		SELECT 
+			ot.ObjectTypeName,
+			fth.FolderTypeHierarchyId AS objectTypeHierarchyId,
+			fth.FolderObjectTypeId,
+			CASE 
+				WHEN ot.GeneralType = 2 THEN CAST(1 AS bit) 
+				ELSE CAST(0 AS bit)
+			END AS isDocumentType
+			FROM FolderTypeHierarchy fth
+			INNER JOIN ObjectType ot 
+				ON ot.ObjectTypeID = fth.FolderObjectTypeId
+			WHERE ot.ObjectTypeID = @p1`
+
+	var fot models.FolderObjectTypesNames
+	err := r.db.QueryRow(query, folderObjectTypeId).Scan(
+		&fot.ObjectTypeName,
+		&fot.ObjectTypeHierarchyId,
+		&fot.FolderObjectTypeId,
+		&fot.IsDocumentType,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving tree of available types for folder: %w", err)
+	}
+
+	var folderObjectTypes []models.FolderObjectTypesNames
+	*fot.ObjectTypeHierarchyId, _ = TransformUUID(*fot.ObjectTypeHierarchyId)
+	query = `
+		SELECT 
+			distinct ot.ObjectTypeName,
+			fth.FolderTypeHierarchyId AS ObjectTypeHierarchyId,
+			fth.FolderObjectTypeId,
+			ot.ObjectTypeID,
+			fth.ParentHierarchyId,
+			CASE 
+				WHEN ot.GeneralType = 2 THEN CAST(0 AS bit) 
+				ELSE CAST(1 AS bit)
+			END AS isDocumentType
+		    FROM FolderTypeHierarchy fth
+		    INNER JOIN ObjectType ot 
+			ON ot.ObjectTypeID = fth.FolderObjectTypeId
+		   WHERE fth.ParentHierarchyId = @p1`
+	rows, err := r.db.Query(query, *fot.ObjectTypeHierarchyId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving list of available types for folder: %w", err)
+	}
+	for rows.Next() {
+		var fot models.FolderObjectTypesNames
+		err := rows.Scan(
+			&fot.ObjectTypeName,
+			&fot.ObjectTypeHierarchyId,
+			&fot.FolderObjectTypeId,
+			&fot.ObjectTypeID,
+			&fot.ParentHierarchyId,
+			&fot.IsDocumentType,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error- scanning folder object type: %w", err)
+		}
+		folderObjectTypes = append(folderObjectTypes, fot)
+	}
+
+	return folderObjectTypes, nil
 }

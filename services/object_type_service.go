@@ -112,6 +112,8 @@ func (s *ObjectTypeService) GetFolderRepositoryTree() ([]models.ObjectTypeHierar
 	return s.repo.GetFolderRepositoryTree()
 }
 
+// GetBaseLibrary retrieves the base library of object types
+
 // AddFolderToTree adds a new folder to the folder hierarchy tree
 func (s *ObjectTypeService) AddFolderToTree(req models.AddFolderToTreeRequest) (*uuid.UUID, error) {
 	// Validate: if FolderObjectTypeId is 0, ObjectTypeName must be provided
@@ -127,7 +129,7 @@ func (s *ObjectTypeService) DeleteObjectType(id int) error {
 	return s.repo.Delete(id)
 }
 
-// AssignObjectTypeToFolder assigns an object type to a folder type
+// AssignObjectTypeToFolder assigns an object type to a folder type setting
 func (s *ObjectTypeService) AssignObjectTypeToFolder(req models.FolderObjectTypes) error {
 	// Validate required fields
 	if req.FolderObjectTypeId == 0 {
@@ -149,6 +151,14 @@ func (s *ObjectTypeService) GetAvailableTypesForFolder(folderObjectTypeId int) (
 	return s.repo.GetAvailableTypesForFolder(folderObjectTypeId)
 }
 
+func (s *ObjectTypeService) GetAvailableTypesForLibsAndFolder(folderObjectTypeId int) ([]models.FolderObjectTypesNames, error) {
+	if folderObjectTypeId == 0 {
+		return nil, fmt.Errorf("folder object type ID is required")
+	}
+
+	return s.repo.GetAvailableTypesForLibsAndFolder(folderObjectTypeId)
+}
+
 // DeleteObjectTypeFromFolder removes an object type assignment from a folder
 func (s *ObjectTypeService) DeleteObjectTypeFromFolder(folderObjectTypeId, objectTypeId int) error {
 	if folderObjectTypeId == 0 {
@@ -159,4 +169,7 @@ func (s *ObjectTypeService) DeleteObjectTypeFromFolder(folderObjectTypeId, objec
 	}
 
 	return s.repo.DeleteObjectTypeFromFolder(folderObjectTypeId, objectTypeId)
+}
+func (s *ObjectTypeService) GetBaseLibrary() ([]models.ObjectTypeHierarchy, error) {
+	return s.repo.GetBaseLibrary()
 }

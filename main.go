@@ -56,7 +56,7 @@ func main() {
 	eaTagService := services.NewEATagService(reportConfigRepo)
 
 	// Initialize handlers
-	objectHandler := handlers.NewObjectHandler(objectService)
+	objectHandler := handlers.NewObjectHandler(objectService, objectContentService)
 	objectTypeHandler := handlers.NewObjectTypeHandler(objectTypeService)
 	profileHandler := handlers.NewProfileHandler(profileService)
 	objectContentHandler := handlers.NewObjectContentHandler(objectContentService)
@@ -85,9 +85,12 @@ func main() {
 
 	// ObjectType routes
 	api.HandleFunc("/object-types/folder-tree", objectTypeHandler.GetFolderRepositoryTree).Methods("GET")
+	api.HandleFunc("/object-types/baseLibrary", objectTypeHandler.GetBaseLibrary).Methods("GET")
 	api.HandleFunc("/object-types/folder-tree", objectTypeHandler.AddFolderToTree).Methods("POST")
 	api.HandleFunc("/object-types/folder-assignments", objectTypeHandler.AssignObjectTypeToFolder).Methods("POST")
 	api.HandleFunc("/object-types/folder-assignments/{folderObjectTypeId}", objectTypeHandler.GetAvailableTypesForFolder).Methods("GET")
+	api.HandleFunc("/object-types/libs/folder-assignments/{folderObjectTypeId}", objectTypeHandler.GetAvailableTypesForLibsAndFolders).Methods("GET")
+
 	api.HandleFunc("/object-types/folder-assignments/{folderObjectTypeId}/{objectTypeId}", objectTypeHandler.DeleteObjectTypeFromFolder).Methods("DELETE")
 	api.HandleFunc("/object-types/search", objectTypeHandler.SearchObjectTypes).Methods("GET")
 	api.HandleFunc("/object-types", objectTypeHandler.GetAllObjectTypes).Methods("GET")

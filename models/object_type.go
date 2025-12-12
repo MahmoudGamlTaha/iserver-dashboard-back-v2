@@ -47,6 +47,7 @@ type ObjectTypeHierarchy struct {
 	ObjectTypeParentId    *uuid.UUID `json:"objectTypeParentId" db:"objectTypeParentId"`
 	Level                 *int       `json:"Level" db:"Level"`
 	FullPath              *string    `json:"FullPath" db:"FullPath"`
+	IsDocumentType        bool       `json:"isDocumentType" db:"IsDocumentType"`
 }
 
 // CreateObjectTypeRequest represents the request body for creating a new object type
@@ -85,8 +86,10 @@ type FolderObjectTypes struct {
 	IsDocumentType     bool `json:"isDocumentType"`
 }
 type FolderObjectTypesNames struct {
-	ObjectTypeID       int    `json:"objectTypeId"`
-	FolderObjectTypeId int    `json:"folderObjectTypeId"`
-	IsDocumentType     bool   `json:"isDocumentType"`
-	ObjectTypeName     string `json:"objectTypeName"`
+	ObjectTypeID          int        `json:"objectTypeId"`
+	FolderObjectTypeId    int        `json:"folderObjectTypeId"`
+	IsDocumentType        bool       `json:"isDocumentType"`
+	ObjectTypeName        string     `json:"objectTypeName"`
+	ObjectTypeHierarchyId *uuid.UUID `json:"objectTypeHierarchyId"`
+	ParentHierarchyId     *uuid.UUID `json:"parentHierarchyId"`
 }

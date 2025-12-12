@@ -28,6 +28,14 @@ func (s *ObjectContentService) CreateObjectContent(req models.CreateObjectConten
 
 	return s.repo.Create(req)
 }
+func (s *ObjectContentService) CreateObjectContentV2(req models.CreateObjectContentRequest) (*models.ObjectContent, error) {
+	// Validate required fields
+	if req.CreatedBy == 0 {
+		return nil, fmt.Errorf("created by is required")
+	}
+
+	return s.repo.CreateV2(req)
+}
 
 // GetObjectContentByID retrieves an object content by its ID
 func (s *ObjectContentService) GetObjectContentByID(id int) (*models.ObjectContent, error) {

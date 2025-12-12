@@ -45,17 +45,21 @@ type Object struct {
 
 // CreateObjectRequest represents the request body for creating a new object
 type CreateObjectRequest struct {
-	ObjectName          string     `json:"objectName" validate:"required"`
-	ObjectDescription   string     `json:"objectDescription"`
-	ObjectTypeID        int        `json:"objectTypeId" validate:"required"`
-	ExactObjectTypeID   int        `json:"exactObjectTypeId" validate:"required"`
-	RichTextDescription string     `json:"richTextDescription"`
-	IsLibrary           bool       `json:"isLibrary"`
-	LibraryId           *uuid.UUID `json:"libraryId,omitempty"`
-	FileExtension       *string    `json:"fileExtension,omitempty"`
-	Prefix              *string    `json:"prefix,omitempty"`
-	Suffix              *string    `json:"suffix,omitempty"`
-	CreatedBy           int        `json:"createdBy" validate:"required"`
+	ObjectName          string               `json:"objectName" validate:"required"`
+	ObjectDescription   string               `json:"objectDescription"`
+	ObjectTypeID        int                  `json:"objectTypeId" validate:"required"`
+	ExactObjectTypeID   int                  `json:"exactObjectTypeId" validate:"required"`
+	RichTextDescription string               `json:"richTextDescription"`
+	IsLibrary           bool                 `json:"isLibrary"`
+	IsImported          bool                 `json:"isImported"`
+	LibraryId           *uuid.UUID           `json:"libraryId,omitempty"`
+	FileExtension       *string              `json:"fileExtension,omitempty"`
+	Prefix              *string              `json:"prefix,omitempty"`
+	Suffix              *string              `json:"suffix,omitempty"`
+	CreatedBy           int                  `json:"createdBy" validate:"required"`
+	Attributes          *[]AssignedAttribute `json:"attributes,omitempty"`
+	GeneralType         *int                 `json:"generalType,omitempty"`
+	DirectParentId      *uuid.UUID           `json:"directParentId,omitempty"`
 }
 
 // UpdateObjectRequest represents the request body for updating an object

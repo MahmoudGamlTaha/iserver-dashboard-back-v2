@@ -23,7 +23,13 @@ func NewObjectContentRepository(db *sql.DB) *ObjectContentRepository {
 // Create creates a new object content in the database
 func (r *ObjectContentRepository) Create(req models.CreateObjectContentRequest) (*models.ObjectContent, error) {
 	now := time.Now()
-
+	req.Instances = 1
+	req.IsShortCut = new(bool)
+	*req.IsShortCut = false
+	req.ObjectID, _ = TransformUUIDToSQLServerV2(req.ObjectID)
+	req.ContainerVersionID, _ = TransformUUID(req.ContainerVersionID)
+	req.DocumentObjectID, _ = TransformUUIDToSQLServerV2(req.DocumentObjectID)
+	fmt.Println("version id -container", req.ContainerVersionID)
 	query := `
 		INSERT INTO ObjectContents (
 			DocumentObjectID, ContainerVersionID, ObjectID, Instances, IsShortCut, 
@@ -36,11 +42,61 @@ func (r *ObjectContentRepository) Create(req models.CreateObjectContentRequest) 
 	var id int
 	err := r.db.QueryRow(query,
 		req.DocumentObjectID, req.ContainerVersionID, req.ObjectID, req.Instances, req.IsShortCut,
-		req.ContainmentType, now, req.CreatedBy, now, req.CreatedBy,
+		req.ContainmentType, now, req.CreatedBy, now, req.CreatedBy, time.Now(), 62,
 	).Scan(&id)
 
 	if err != nil {
 		return nil, fmt.Errorf("error creating object content: %w", err)
+	}
+
+	return r.GetByID(id)
+}
+
+// CreateV2 creates a new object content in the database using the container's current version
+func (r *ObjectContentRepository) CreateV2(req models.CreateObjectContentRequest) (*models.ObjectContent, error) {
+	now := time.Now()
+	req.Instances = 1
+	req.IsShortCut = new(bool)
+	*req.IsShortCut = false
+
+	req.ObjectID, _ = TransformUUID(req.ObjectID)
+	req.DocumentObjectID, _ = TransformUUID(req.DocumentObjectID)
+
+	query := `
+		INSERT INTO ObjectContents (
+			DocumentObjectID, ContainerVersionID, ObjectID, Instances, IsShortCut, 
+			ContainmentType, DateCreated, CreatedBy, DateModified, ModifiedBy
+		) OUTPUT INSERTED.ID 
+		SELECT 
+			@p1,
+			container.CurrentVersionId,
+			@p2,
+			@p3,
+			@p4,
+			@p5,
+			@p6,
+			@p7,
+			@p8,
+			@p9
+		FROM [Object] AS container
+		WHERE container.ObjectID = @p1
+	`
+
+	var id int
+	err := r.db.QueryRow(query,
+		req.DocumentObjectID, // p1
+		req.ObjectID,         // p2
+		req.Instances,        // p3
+		req.IsShortCut,       // p4
+		req.ContainmentType,  // p5
+		now,                  // p6
+		req.CreatedBy,        // p7
+		now,                  // p8
+		req.CreatedBy,        // p9
+	).Scan(&id)
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating object content v2: %w", err)
 	}
 
 	return r.GetByID(id)
@@ -202,7 +258,7 @@ func (r *ObjectContentRepository) Delete(id int) error {
 
 func (r *ObjectContentRepository) DashboardCount(libraryID uuid.UUID) ([]models.DashboardCount, error) {
 
-	sql := ` select o.ExactObjectTypeID,COUNT(ObjectID) [count], ot.ObjectTypeName, ot.color, ot.icon, ea.name_en, ea.name_ar from Object o
+	query := ` select o.ExactObjectTypeID,COUNT(ObjectID) [count], ot.ObjectTypeName, ot.color, ot.icon, ea.name_en, ea.name_ar from Object o
 			inner join objecttype ot on ot.ObjectTypeID = o.ExactObjectTypeID
 		    left join EA_Tags_Dimentions ead on ead.object_type_id = o.ExactObjectTypeID
 			left join EA_Tags ea on ea.id = ead.ea_tag_id
@@ -216,10 +272,12 @@ func (r *ObjectContentRepository) DashboardCount(libraryID uuid.UUID) ([]models.
 	//sqlUUID, _ := uuid.FromBytes(sqlServerUUID)
 	//fmt.Println("UUID:", sqlUUID.String())
 
-	resultSet, err := r.db.Query(sql, &libraryID)
+	resultSet, err := r.db.Query(query, &libraryID)
 
-	var dashboardCounts []models.DashboardCount
-
+	var dashboardCounts []models.DashboardCount = []models.DashboardCount{}
+	if err == sql.ErrNoRows {
+		return dashboardCounts, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +319,7 @@ func (r *ObjectContentRepository) DashboardCountGrouped(libraryID uuid.UUID) ([]
 	for resultSet.Next() {
 		var dashboardCount models.DashboardCount
 		err := resultSet.Scan(&dashboardCount.ExactObjectTypeID, &dashboardCount.Count,
-			&dashboardCount.ObjectTypeName, &dashboardCount.Color, &dashboardCount.Icon, 
+			&dashboardCount.ObjectTypeName, &dashboardCount.Color, &dashboardCount.Icon,
 			&dashboardCount.NameEn, &dashboardCount.NameAr)
 
 		if err != nil {
@@ -307,14 +365,14 @@ func (r *ObjectContentRepository) DashboardCountGrouped(libraryID uuid.UUID) ([]
 
 	// Convert map to slice
 	var categories []models.GroupedDashboardCategory
-	
+
 	// Add categorized items first
 	for key, category := range categoryMap {
 		if key != uncategorizedKey {
 			categories = append(categories, *category)
 		}
 	}
-	
+
 	// Add uncategorized at the end if it exists
 	if uncategorized, exists := categoryMap[uncategorizedKey]; exists {
 		categories = append(categories, *uncategorized)

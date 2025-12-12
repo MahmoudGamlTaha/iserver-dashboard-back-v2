@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"enterprise-architect-api/models"
 	"enterprise-architect-api/services"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -13,12 +14,13 @@ import (
 
 // ObjectHandler handles HTTP requests for objects
 type ObjectHandler struct {
-	service *services.ObjectService
+	service              *services.ObjectService
+	objectContentService *services.ObjectContentService
 }
 
 // NewObjectHandler creates a new ObjectHandler
-func NewObjectHandler(service *services.ObjectService) *ObjectHandler {
-	return &ObjectHandler{service: service}
+func NewObjectHandler(service *services.ObjectService, objectContent *services.ObjectContentService) *ObjectHandler {
+	return &ObjectHandler{service: service, objectContentService: objectContent}
 }
 
 // ImportObjects handles POST /api/objects/import
@@ -48,13 +50,32 @@ func (h *ObjectHandler) CreateObject(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
 		return
 	}
-
+	req.CreatedBy = 62
 	object, err := h.service.CreateObject(req)
+
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to create object", err.Error())
 		return
 	}
+	objectContent := &models.CreateObjectContentRequest{
+		ContainerVersionID: *object.CurrentVersionId,
+		ObjectID:           object.ObjectID,
+		CreatedBy:          62,
+	}
 
+	objectContent.ContainmentType = 1
+	if req.IsLibrary {
+		objectContent.DocumentObjectID = uuid.Nil
+	} else {
+		objectContent.DocumentObjectID = *req.DirectParentId
+	}
+
+	objectContentItem, err := h.objectContentService.CreateObjectContentV2(*objectContent)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to create object content", err.Error())
+		return
+	}
+	fmt.Println("object content created", objectContentItem)
 	respondWithJSON(w, http.StatusCreated, object)
 }
 
@@ -104,7 +125,7 @@ func (h *ObjectHandler) UpdateObject(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
 		return
 	}
-
+	req.ModifiedBy = 62 // unitl make
 	object, err := h.service.UpdateObject(id, req)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to update object", err.Error())

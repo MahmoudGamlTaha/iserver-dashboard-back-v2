@@ -956,6 +956,7 @@ func (r *ObjectRepository) GetHierarchyFolderV2(ObjectID uuid.UUID, profileID in
     , IsFirstVersionCheckedOut
     , FolderId
     , isFolder
+	, [ObjectTypeName]
 ) AS (
     
     SELECT  
@@ -995,9 +996,11 @@ func (r *ObjectRepository) GetHierarchyFolderV2(ObjectID uuid.UUID, profileID in
                     THEN 1 ELSE 0 END AS BIT)
         , do.FolderId
         , do.isFolder
+		,ot.ObjectTypeName
     FROM vwFolderContents AS do
     INNER JOIN vwObjectSimple AS o ON o.ObjectID = do.ObjectId
     INNER JOIN dbo.[Version] AS v ON v.ID = o.CurrentVersionId
+	INNER JOIN dbo.[ObjectType] AS ot ON ot.ObjectTypeID = o.TypeId
     WHERE do.FolderId = @p1
       AND o.IsDeleted = 0
       AND do.IsDeleted = 0
@@ -1042,10 +1045,12 @@ func (r *ObjectRepository) GetHierarchyFolderV2(ObjectID uuid.UUID, profileID in
                     THEN 1 ELSE 0 END AS BIT)
         , do.FolderId
         , do.isFolder
+		,ot.ObjectTypeName
     FROM vwFolderContents AS do
     INNER JOIN recurse ON do.FolderId = recurse.ObjectID
     INNER JOIN vwObjectSimple AS o ON o.ObjectID = do.ObjectId
     INNER JOIN dbo.[Version] AS v ON v.ID = o.CurrentVersionId
+	INNER JOIN dbo.[ObjectType] AS ot ON ot.ObjectTypeID = o.TypeId
     WHERE o.IsDeleted = 0
       AND do.IsDeleted = 0
       AND do.isFolder IN (CAST(@p2 AS BIT), CAST(1 AS BIT))
@@ -1086,6 +1091,7 @@ SELECT
     , recurse.IsFirstVersionCheckedOut
     , recurse.FolderId
     , recurse.isFolder
+	, recurse.ObjectTypeName as TypeName
     , vchkin.ObjectName AS CheckedInName
     , vchkin.VisioAlias AS CheckedInVisioAlias
     , vchkin.HasVisioAlias AS CheckedInHasVisioAlias
@@ -1099,7 +1105,6 @@ LEFT JOIN dbo.[Version] AS vchkin ON vchkin.ID = recurse.CheckedInVersionId
 LEFT JOIN dbo.ObjectPermissions AS op 
        ON op.ObjectID = recurse.ObjectID 
       AND op.ProfileID = @p3;
-
 	`
 
 	// Convert UUID to SQL Server format
@@ -1153,6 +1158,7 @@ LEFT JOIN dbo.ObjectPermissions AS op
 			&obj.IsFirstVersionCheckedOut,
 			&obj.FolderId,
 			&obj.IsFolder,
+			&obj.TypeName,
 			// Additional fields from joins
 			&obj.CheckedInName,
 			&obj.CheckedInVisioAlias,
@@ -1166,7 +1172,7 @@ LEFT JOIN dbo.ObjectPermissions AS op
 		if err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
-		fmt.Println("TyyyyypeId", obj.TypeId)
+		fmt.Println("TypeName", obj.TypeName)
 		objects = append(objects, obj)
 	}
 

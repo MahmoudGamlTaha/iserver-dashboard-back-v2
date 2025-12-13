@@ -45,6 +45,7 @@ func main() {
 	attributeRepo := repositories.NewAttributeRepository(db)
 	reportConfigRepo := repositories.NewReportConfigRepository(db)
 	objectRepo := repositories.NewObjectRepository(db, attributeRepo)
+	relationRepo := repositories.NewRelationRepository(db)
 	// Initialize services
 	objectService := services.NewObjectService(objectRepo)
 	objectTypeService := services.NewObjectTypeService(objectTypeRepo)
@@ -54,6 +55,7 @@ func main() {
 	attributeService := services.NewAttributeService(attributeRepo)
 	fileObjectsService := services.NewFileObjectsService()
 	eaTagService := services.NewEATagService(reportConfigRepo)
+	relationService := services.NewRelationService(relationRepo)
 
 	// Initialize handlers
 	objectHandler := handlers.NewObjectHandler(objectService, objectContentService)
@@ -64,6 +66,7 @@ func main() {
 	attributeHandler := handlers.NewAttributeHandler(attributeService)
 	fileObjectsHandler := handlers.NewFileObjectsHandler(fileObjectsService)
 	eaTagHandler := handlers.NewEATagHandler(eaTagService)
+	relationHandler := handlers.NewRelationHandler(relationService)
 
 	// Setup router
 	router := mux.NewRouter()
@@ -144,6 +147,11 @@ func main() {
 	api.HandleFunc("/ea-tags/{id}", eaTagHandler.DeleteEATag).Methods("DELETE")
 	api.HandleFunc("/ea-tags/assign-dimension", eaTagHandler.AssignObjectTypeToDimention).Methods("POST")
 	api.HandleFunc("/ea-tags/assigned-dimension/{objectTypeID}", eaTagHandler.GetEAObjectTypesAssignedToDimension).Methods("GET")
+
+	// Relation routes
+	api.HandleFunc("/relations", relationHandler.CreateRelation).Methods("POST")
+	api.HandleFunc("/relations/objects/{id}/relations", relationHandler.GetRelationsByObjectID).Methods("GET")
+	api.HandleFunc("/relations/types", relationHandler.GetAllRelationTypes).Methods("GET")
 
 	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

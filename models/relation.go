@@ -49,8 +49,10 @@ type CreateRelationRequest struct {
 // RelationWithDetails extends Relation to include details about the related object and type
 type RelationWithDetails struct {
 	Relation
-	RelationTypeName string    `json:"relationTypeName"`
-	OtherObjectID    uuid.UUID `json:"otherObjectId"`
-	OtherObjectName  string    `json:"otherObjectName"`
-	Direction        string    `json:"direction"` // "From" or "To"
+	RelationTypeName  string    `json:"relationTypeName"`
+	OtherObjectID     uuid.UUID `json:"otherObjectId"`
+	OtherObjectName   string    `json:"otherObjectName"`
+	FromToDescription *string   `json:"fromToDescription"`
+	ToFromDescription *string   `json:"toFromDescription"`
+	Direction         string    `json:"direction"` // "From" or "To"
 }

@@ -76,7 +76,7 @@ func (r *RelationRepository) GetByObjectID(objectID uuid.UUID) ([]models.Relatio
 			r.FromObjectId, r.ToObjectId, r.DateCreated, r.CreatedBy, 
 			r.DateModified, r.ModifiedBy, r.RichTextDescription,
 			rt.RelationTypeName,
-			other.ObjectID, other.ObjectName,
+			other.ObjectID, other.ObjectName, rt.FromToDescription, rt.ToFromDescription,
 			CASE WHEN r.FromObjectId = @p1 THEN 'To' ELSE 'From' END as Direction
 		FROM [Relation] r
 		INNER JOIN [RelationType] rt ON r.RelationTypeId = rt.RelationTypeId
@@ -103,6 +103,8 @@ func (r *RelationRepository) GetByObjectID(objectID uuid.UUID) ([]models.Relatio
 			&rel.RelationTypeName,
 			&otherIDBytes, &rel.OtherObjectName,
 			&rel.Direction,
+			&rel.FromToDescription,
+			&rel.ToFromDescription,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning relationship: %w", err)
